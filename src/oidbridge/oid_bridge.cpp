@@ -104,8 +104,15 @@ class OidBridge
 
     bool start()
     {
+        const static quint16 serverPort =
+#if !defined(IS_DEVELOPMENT)
+            0;      // A port is chosen automatically.
+#else
+            9588;   // A port is statically set for convenient OID development.
+#endif
+
         // Initialize server
-        if (!server_.listen(QHostAddress::Any)) {
+        if (!server_.listen(QHostAddress::Any, serverPort)) {
             // TODO escalate error
             cerr << "[OpenImageDebugger] Could not start TCP server" << endl;
             return false;
@@ -116,9 +123,11 @@ class OidBridge
 
         const vector<string> command {windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
+        // Don't run UI application in case of OID development.
+#if !defined(IS_DEVELOPMENT)
         ui_proc_.start(command);
-
         ui_proc_.waitForStart();
+#endif
 
         wait_for_client();
 
@@ -132,7 +141,15 @@ class OidBridge
 
     bool is_window_ready()
     {
-        return client_ != nullptr && ui_proc_.isRunning();
+        if (client_ == nullptr)
+            return false;
+
+#if !defined(IS_DEVELOPMENT)
+        if (!ui_proc_.isRunning())
+            return false;
+#endif
+
+        return true;
     }
 
     deque<string> get_observed_symbols()
@@ -206,7 +223,9 @@ class OidBridge
 
     ~OidBridge()
     {
+#if !defined(IS_DEVELOPMENT)
         ui_proc_.kill();
+#endif
     }
 
   private:
@@ -306,8 +325,15 @@ class OidBridge
 
     void wait_for_client()
     {
+        const static int timeoutConnectionMsec =
+#if !defined(IS_DEVELOPMENT)
+            10 * 1000;      // 10 seconds.
+#else
+            10 * 60 * 1000; // 10 minutes.
+#endif
+        
         if (client_ == nullptr) {
-            if (!server_.waitForNewConnection(10000)) {
+            if (!server_.waitForNewConnection(timeoutConnectionMsec)) {
                 cerr << "[OpenImageDebugger] No clients connected to OpenImageDebugger server"
                      << endl;
             }

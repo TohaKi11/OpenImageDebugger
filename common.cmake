@@ -41,3 +41,13 @@ find_package(Threads REQUIRED)
 find_package(Qt5 COMPONENTS Network REQUIRED)
 
 add_compile_options(-Wall -Wextra -pedantic -fvisibility=hidden)
+
+# Check if this is a debug build.
+string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWERCASE)
+if(("${CMAKE_BUILD_TYPE_LOWERCASE}" STREQUAL "debug") OR ("${CMAKE_BUILD_TYPE_LOWERCASE}" STREQUAL "relwithdebinfo"))
+	set(IS_DEVELOPMENT TRUE)
+	add_definitions(-DIS_DEVELOPMENT)
+    message(WARNING "The debug version is being built. It is recommended to use a release build, except for OpenImageDebugger development")
+else()
+	set(IS_DEVELOPMENT FALSE)
+endif()
