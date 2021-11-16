@@ -66,7 +66,8 @@ void MainWindow::initialize_settings()
         default_export_suffix_ = "Image File (*.png)";
     }
 
-    // Load previous session symbols
+#if !defined(IS_DEVELOPMENT)
+    // Load previous session symbols (don't do that in case of OID development).
     QDateTime now = QDateTime::currentDateTime();
     QList<BufferExpiration> previous_buffers =
         settings.value("PreviousSession/buffers")
@@ -78,6 +79,7 @@ void MainWindow::initialize_settings()
                 previous_buffer.first.toStdString());
         }
     }
+#endif
 
     // Load window position/size
     settings.beginGroup("MainWindow");
@@ -187,7 +189,9 @@ void MainWindow::initialize_networking()
 {
     socket_.connectToHost(QString(host_settings_.url.c_str()),
                           host_settings_.port);
-    socket_.waitForConnected();
+    const bool isConnected = socket_.waitForConnected();
+
+    std::cout << "Connection status: " << host_settings_.url << ":" << host_settings_.port << " - " << (isConnected ? "connected" : "disconnected") << std::endl;
 }
 
 
