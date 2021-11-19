@@ -33,6 +33,7 @@
 #include "oid_bridge.h"
 #include "ipc/message_exchange.h"
 #include "system/process/process.h"
+#include "logger/logger.h"
 
 #include <QDataStream>
 #include <QString>
@@ -114,10 +115,13 @@ class OidBridge
 
         // Initialize server
         if (!server_.listen(QHostAddress::Any, serverPort)) {
-            // TODO escalate error
-            cerr << "[OpenImageDebugger] Could not start TCP server" << endl;
+
+            Logger::instance()->error("Could not start TCP server");
             return false;
         }
+
+        Logger::instance()->info("Waiting for connection to port {}", server_.serverPort());
+        Logger::instance()->flush();
 
         string windowBinaryPath = this->oid_path_ + "/oidwindow";
         string portStdString    = std::to_string(server_.serverPort());
@@ -239,6 +243,7 @@ class OidBridge
 
     std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_;
 
+private:
     std::unique_ptr<UiMessage>
     try_get_stored_message(const MessageType& msg_type)
     {
@@ -278,7 +283,7 @@ class OidBridge
                     decode_get_observed_symbols_response();
                 break;
             default:
-                cerr << "[OpenImageDebugger] Received message with incorrect header" << endl;
+                Logger::instance()->error("Received message with incorrect header");
                 break;
             }
         } while (client_->bytesAvailable() > 0);
@@ -334,10 +339,10 @@ class OidBridge
 #endif
         
         if (client_ == nullptr) {
-            if (!server_.waitForNewConnection(timeoutConnectionMsec)) {
-                cerr << "[OpenImageDebugger] No clients connected to OpenImageDebugger server"
-                     << endl;
-            }
+
+            if (!server_.waitForNewConnection(timeoutConnectionMsec))
+                Logger::instance()->error("No clients connected to OpenImageDebugger server");
+
             client_ = server_.nextPendingConnection();
         }
     }
@@ -350,10 +355,10 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
     PyGILRAII py_gil_raii;
 
     if (optional_parameters != nullptr && !PyDict_Check(optional_parameters)) {
-        RAISE_PY_EXCEPTION(
-            PyExc_TypeError,
-            "Invalid second parameter given to oid_initialize (was expecting"
-            " a dict).");
+
+        const std::string error_str = "Invalid second parameter given to oid_initialize (was expecting a dict).";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_TypeError, error_str.c_str());
         return nullptr;
     }
 
@@ -382,8 +387,10 @@ void oid_cleanup(AppHandler handler)
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "oid_terminate received null application handler");
+
+        const std::string error_str = "oid_cleanup received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
         return;
     }
 
@@ -398,8 +405,10 @@ void oid_exec(AppHandler handler)
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "oid_exec received null application handler");
+
+        const std::string error_str = "oid_exec received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
         return;
     }
 
@@ -414,8 +423,10 @@ int oid_is_window_ready(AppHandler handler)
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "oid_exec received null application handler");
+
+        const std::string error_str = "oid_is_window_ready received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
         return 0;
     }
 
@@ -430,9 +441,10 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_Exception,
-                           "oid_get_observed_buffers received null "
-                           "application handler");
+
+        const std::string error_str = "oid_get_observed_buffers received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
         return nullptr;
     }
 
@@ -466,9 +478,10 @@ void oid_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "oid_set_available_symbols received null "
-                           "application handler");
+
+        const std::string error_str = "oid_set_available_symbols received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
         return;
     }
 
@@ -491,9 +504,10 @@ void oid_run_event_loop(AppHandler handler)
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "oid_run_event_loop received null application "
-                           "handler");
+
+        const std::string error_str = "oid_run_event_loop received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
         return;
     }
 
@@ -509,15 +523,18 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "oid_plot_buffer received null application handler");
+
+        const std::string error_str = "oid_plot_buffer received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
         return;
     }
 
     if (!PyDict_Check(buffer_metadata)) {
-        RAISE_PY_EXCEPTION(PyExc_TypeError,
-                           "Invalid object given to plot_buffer (was expecting"
-                           " a dict).");
+
+        const std::string error_str = "Invalid object given to oid_plot_buffer (was expecting a dict)";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_TypeError, error_str.c_str());
         return;
     }
 
@@ -599,8 +616,10 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     }
 #endif
     else {
-        RAISE_PY_EXCEPTION(PyExc_TypeError,
-                           "Could not retrieve C pointer to provided buffer");
+
+        const std::string error_str = "Could not retrieve C pointer to provided buffer";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_TypeError, error_str.c_str());
         return;
     }
 
@@ -628,18 +647,21 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 
     if (buff_ptr == nullptr) {
 
-        RAISE_PY_EXCEPTION(PyExc_TypeError, "oid_plot_buffer received nullptr as buffer pointer");
+        const std::string error_str = "oid_plot_buffer received nullptr as buffer pointer";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_TypeError, error_str.c_str());
         return;
     }
 
     if (buff_size < buff_size_expected) {
 
-        std::stringstream ss;
-        ss << "oid_plot_buffer received shorter buffer then expected";
-        ss << ". Variable name " << variable_name_str;
-        ss << ". Expected " << buff_size_expected << "bytes";
-        ss << ". Received " << buff_size << "bytes";
-        RAISE_PY_EXCEPTION(PyExc_TypeError, ss.str().c_str());
+        const std::string error_str = "oid_plot_buffer received shorter buffer then expected";
+        Logger::instance()->error(error_str +
+                            ". Variable name {}"
+                            ". Expected {} bytes"
+                            ". Received {} bytes",
+                            variable_name_str, buff_size_expected, buff_size);
+        RAISE_PY_EXCEPTION(PyExc_TypeError, error_str.c_str());
         return;
     }
 

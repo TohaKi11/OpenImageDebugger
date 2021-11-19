@@ -32,12 +32,6 @@
     PyGILState_Release(gstate);
 
 
-#define RAISE_PY_EXCEPTION(exception_type, msg)    \
-    PyGILState_STATE gstate = PyGILState_Ensure(); \
-    PyErr_SetString(exception_type, msg);          \
-    PyGILState_Release(gstate);
-
-
 #define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)         \
     if (py_##name == nullptr) {                                       \
         RAISE_PY_EXCEPTION(                                           \

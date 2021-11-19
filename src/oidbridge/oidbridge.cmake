@@ -29,6 +29,7 @@ add_library(${PROJECT_NAME} SHARED
             ../../ipc/message_exchange.cpp
             ../../ipc/raw_data_decode.cpp
             ../../system/process/process.cpp
+            ../../logger/logger.cpp
             $<$<BOOL:${UNIX}>:../../system/process/process_unix.cpp>
             $<$<BOOL:${WIN32}>:../../system/process/process_win32.cpp>)
 
@@ -45,7 +46,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt5::Core
                       Qt5::Network
                       Threads::Threads
-                      ${PYTHON_LIBRARY})
+                      ${PYTHON_LIBRARY}
+                      spdlog::spdlog)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION OpenImageDebugger)
 

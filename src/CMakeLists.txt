@@ -66,6 +66,7 @@ set(SOURCES
     visualization/shaders/text_fs.cpp
     visualization/shaders/text_vs.cpp
     visualization/stage.cpp
+    logger/logger.cpp
 )
 
 set(QT_FORMS ui/main_window/main_window.ui)
@@ -90,7 +91,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt5::Network
                       Qt5::Widgets
                       Threads::Threads
-                      ${OPENGL_gl_LIBRARY})
+                      ${OPENGL_gl_LIBRARY}
+                      spdlog::spdlog)
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
