@@ -23,25 +23,21 @@
  * IN THE SOFTWARE.
  */
 
-#include <iostream>
+#pragma once
 
-#include "message_exchange.h"
+#include "message_block.h"
 
-MessageBlock::~MessageBlock()
+
+struct BufferBlock : public MessageBlock
 {
-}
+    BufferBlock(const uint8_t* buffer, size_t length);
+    ~BufferBlock();
 
-StringBlock::StringBlock(const std::string &value)
-    : data_(value)
-{
-}
+    virtual size_t size() const;
 
-size_t StringBlock::size() const
-{
-    return data_.size();
-}
+    virtual const uint8_t* data() const;
 
-const uint8_t *StringBlock::data() const
-{
-    return reinterpret_cast<const uint8_t*>(data_.data());
-}
+  private:
+    const uint8_t* buffer_;
+    size_t length_;
+};

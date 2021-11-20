@@ -31,7 +31,8 @@
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
 #include "oid_bridge.h"
-#include "ipc/message_exchange.h"
+#include "ipc/message_composer.h"
+#include "ipc/message_decoder.h"
 #include "system/process/process.h"
 #include "logger/logger.h"
 

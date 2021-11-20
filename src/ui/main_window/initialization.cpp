@@ -68,7 +68,7 @@ void MainWindow::initialize_settings()
     }
     settings.endGroup();
 
-#if !defined(IS_DEVELOPMENT)
+//#if !defined(IS_DEVELOPMENT)
     // Load previous session symbols (don't do that in case of OID development).
     QDateTime now = QDateTime::currentDateTime();
     QList<BufferExpiration> previous_buffers =
@@ -81,7 +81,7 @@ void MainWindow::initialize_settings()
                 previous_buffer.first.toStdString());
         }
     }
-#endif
+//#endif
 
 
     // Load window position/size.

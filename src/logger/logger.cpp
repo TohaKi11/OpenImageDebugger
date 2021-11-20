@@ -78,6 +78,9 @@ std::shared_ptr<spdlog::logger> Logger::init_logger()
 
         // Initialize file logger.
         return spdlog::basic_logger_mt("OID", path_dir_str + time_str + ".txt");
+
+        spdlog::flush_every(std::chrono::seconds(5));
+        spdlog::flush_on(spdlog::level::warn);
     } catch (const spdlog::spdlog_ex& ex) {
 
         // Use default cout logger.

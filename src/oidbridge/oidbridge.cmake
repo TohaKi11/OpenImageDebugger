@@ -23,15 +23,18 @@
 
 cmake_minimum_required(VERSION 3.10.0)
 
-add_library(${PROJECT_NAME} SHARED
+file(GLOB_RECURSE SOURCES
             ../oid_bridge.cpp
             ../../debuggerinterface/python_native_interface.cpp
-            ../../ipc/message_exchange.cpp
-            ../../ipc/raw_data_decode.cpp
-            ../../system/process/process.cpp
-            ../../logger/logger.cpp
+            ../../ipc/*.cpp
+            ../../logger/*.cpp
+            ../../system/process/process.cpp)
+
+set(SOURCE_PROCESS
             $<$<BOOL:${UNIX}>:../../system/process/process_unix.cpp>
             $<$<BOOL:${WIN32}>:../../system/process/process_win32.cpp>)
+
+add_library(${PROJECT_NAME} SHARED ${SOURCES} ${SOURCE_PROCESS})
 
 target_compile_options(${PROJECT_NAME}
                        PUBLIC "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")

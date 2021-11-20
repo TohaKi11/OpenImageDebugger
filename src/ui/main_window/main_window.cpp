@@ -36,7 +36,6 @@
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
-#include "ipc/message_exchange.h"
 
 
 using namespace std;

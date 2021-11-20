@@ -31,7 +31,7 @@
 
 #include "component.h"
 #include "visualization/shader.h"
-#include "ipc/message_exchange.h"
+#include "ipc/raw_data_decode.h"
 
 
 class Buffer : public Component

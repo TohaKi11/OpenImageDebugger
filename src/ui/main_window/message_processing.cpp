@@ -23,7 +23,11 @@
  * IN THE SOFTWARE.
  */
 
+#include <QDebug>
+
 #include "main_window.h"
+#include "ipc/message_composer.h"
+#include "ipc/message_decoder.h"
 
 #include "ui_main_window.h"
 
@@ -35,6 +39,8 @@ void MainWindow::decode_set_available_symbols()
     std::unique_lock<std::mutex> lock(ui_mutex_);
     MessageDecoder message_decoder(&socket_);
     message_decoder.read<QStringList, QString>(available_vars_);
+
+    qDebug() << "!!!!!!! Received available symbols: " << available_vars_;
 
     for (const auto& symbol_value : available_vars_) {
         // Plot buffer if it was available in the previous session
@@ -50,13 +56,19 @@ void MainWindow::decode_set_available_symbols()
 
 void MainWindow::respond_get_observed_symbols()
 {
+    qDebug() << "!!!!!!! Received command to show observed symbols";
+    QStringList observed_vars;  //DAR
+
     MessageComposer message_composer;
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(held_buffers_.size());
     for (const auto& name : held_buffers_) {
         message_composer.push(name.first);
+        observed_vars.push_back(QString::fromStdString(name.first));    //DAR
     }
     message_composer.send(&socket_);
+
+    qDebug() << "!!!!!!! Sent observed symbols: " << observed_vars;
 }
 
 
@@ -91,6 +103,8 @@ void MainWindow::decode_plot_buffer_contents()
         .read(buff_stride)
         .read(buff_type)
         .read(buff_contents);
+
+    qDebug() << "!!!!!!! Received symbol data: " << QString::fromStdString(display_name_str);
 
     auto buffer_stage = stages_.find(variable_name_str);
 
@@ -230,6 +244,7 @@ void MainWindow::decode_incoming_messages()
         decode_plot_buffer_contents();
         break;
     default:
+        qDebug() << "!!!!!!! Received undefined command";
         break;
     }
 }
@@ -241,4 +256,5 @@ void MainWindow::request_plot_buffer(const char* buffer_name)
     message_composer.push(MessageType::PlotBufferRequest)
         .push(std::string(buffer_name))
         .send(&socket_);
+    qDebug() << "!!!!!!! Sent symbol data request: " << QString::fromLocal8Bit(buffer_name);
 }
