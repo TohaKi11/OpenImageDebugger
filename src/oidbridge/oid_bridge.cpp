@@ -124,10 +124,16 @@ class OidBridge
         Logger::instance()->info("Waiting for connection to port {}", server_.serverPort());
         Logger::instance()->flush();
 
-        string windowBinaryPath = this->oid_path_ + "/oidwindow";
-        string portStdString    = std::to_string(server_.serverPort());
+        const string window_binary_path = this->oid_path_ + "/oidwindow";
+        const string port_str = std::to_string(server_.serverPort());
+        const string logger_file_name = Logger::get_file_name();
 
-        const vector<string> command {windowBinaryPath, "-style", "fusion", "-p", portStdString};
+        const vector<string> command {
+            window_binary_path,
+            "-style", "fusion",
+            "-p", port_str,
+            "-l", logger_file_name
+        };
 
         // Don't run UI application in case of OID development.
 #if !defined(IS_DEVELOPMENT)
@@ -397,6 +403,8 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
                           PyObject* optional_parameters)
 {
     PyGILRAII py_gil_raii;
+
+    Logger::set_logger_name("Bridge");
 
     if (optional_parameters != nullptr && !PyDict_Check(optional_parameters)) {
 

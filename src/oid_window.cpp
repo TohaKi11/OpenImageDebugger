@@ -32,6 +32,7 @@
 
 #include "debuggerinterface/preprocessor_directives.h"
 #include "ui/main_window/main_window.h"
+#include "logger/logger.h"
 
 using namespace std;
 
@@ -44,8 +45,16 @@ int main(int argc, char *argv[])
     parser.addOptions({
         {"h", "hostname", "hostname", "127.0.0.1"},
         {"p", "port", "port", "9588"},
+        {"l", "logger", "logger", ""},
     });
     parser.parse(QCoreApplication::arguments());
+
+    {
+        const std::string logger_file_name_str = parser.value("l").toStdString();
+        if (!logger_file_name_str.empty())
+            Logger::set_file_name(logger_file_name_str);
+        Logger::set_logger_name("UI app");
+    }
 
     ConnectionSettings host_settings;
     host_settings.url = parser.value("h").toStdString();

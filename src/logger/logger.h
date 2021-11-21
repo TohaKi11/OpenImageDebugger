@@ -27,12 +27,19 @@
 
 #include <memory>
 #include <string>
+#include <mutex>
 #include <spdlog/spdlog.h>
 
 
 class Logger
 {
 public:
+    static void set_file_name(const std::string& file_name);
+    static void set_logger_name(const std::string& logger_name);
+
+    static const std::string& get_file_name();
+    static const std::string& get_logger_name();
+
     static const std::shared_ptr<spdlog::logger>& instance();
 
 private:
@@ -44,13 +51,19 @@ private:
     Logger(Logger&&) = delete;
     Logger& operator=(Logger&&) = delete;
 
+    static Logger& instance_wrapper();
+
 private:
-    const std::shared_ptr<spdlog::logger>& logger() const;
+    const std::shared_ptr<spdlog::logger>& logger();
 
 private:
     static std::string get_current_time_str();
-    static std::shared_ptr<spdlog::logger> init_logger();
+    void init_logger();
 
 private:
+    std::string file_name_;
+    std::string logger_name_;
+
+    mutable std::mutex mutex_;
     std::shared_ptr<spdlog::logger> logger_;
 };

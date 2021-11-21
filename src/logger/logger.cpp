@@ -30,21 +30,61 @@
 #include "logger.h"
 
 
+void Logger::set_file_name(const std::string& file_name)
+{
+    auto& wrapper = instance_wrapper();
+    std::lock_guard<std::mutex> lock(wrapper.mutex_);
+
+    if (wrapper.logger_)
+        return;
+
+    wrapper.file_name_ = file_name;
+}
+
+void Logger::set_logger_name(const std::string& logger_name)
+{
+    auto& wrapper = instance_wrapper();
+    std::lock_guard<std::mutex> lock(wrapper.mutex_);
+
+    if (wrapper.logger_)
+        return;
+
+    wrapper.logger_name_ = logger_name;
+}
+
+const std::string& Logger::get_file_name()
+{
+    return instance_wrapper().file_name_;
+}
+
+const std::string& Logger::get_logger_name()
+{
+    return instance_wrapper().logger_name_;
+}
+
 const std::shared_ptr<spdlog::logger>& Logger::instance()
+{
+    return instance_wrapper().logger();
+}
+
+Logger::Logger()
+{
+}
+
+Logger& Logger::instance_wrapper()
 {
     static Logger logger;
 
-    return logger.logger();
+    return logger;
 }
 
-Logger::Logger() :
-    logger_(init_logger())
+const std::shared_ptr<spdlog::logger>& Logger::logger()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
 
-}
+    if (!logger_)
+        init_logger();
 
-const std::shared_ptr<spdlog::logger>& Logger::logger() const
-{
     return logger_;
 }
 
@@ -68,24 +108,26 @@ std::string Logger::get_current_time_str()
     return std::string(mbstr);
 }
 
-std::shared_ptr<spdlog::logger> Logger::init_logger()
+void Logger::init_logger()
 {
     try {
 
+        if (file_name_.empty())
+            file_name_ = get_current_time_str();
+        if (logger_name_.empty())
+            logger_name_ = "OID";
+
         const std::string path_dir_str = "/usr/local/bin/OpenImageDebugger/logs/";
-        const std::string time_str = get_current_time_str();
 
 
         // Initialize file logger.
-        return spdlog::basic_logger_mt("OID", path_dir_str + time_str + ".txt");
+        logger_ = spdlog::basic_logger_mt(logger_name_, path_dir_str + file_name_ + ".txt");
 
-        spdlog::flush_every(std::chrono::seconds(5));
-        spdlog::flush_on(spdlog::level::warn);
+        spdlog::flush_on(spdlog::level::trace);
     } catch (const spdlog::spdlog_ex& ex) {
 
         // Use default cout logger.
-        auto logger = spdlog::default_logger();
-        logger->warn("File logger init failed: {}", ex.what());
-        return logger;
+        logger_ = spdlog::default_logger();
+        logger_->warn("File logger init failed: {}", ex.what());
     }
 }
