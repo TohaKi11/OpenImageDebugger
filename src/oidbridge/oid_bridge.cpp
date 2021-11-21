@@ -23,6 +23,7 @@
  * IN THE SOFTWARE.
  */
 
+#include <queue>
 #include <deque>
 #include <iostream>
 #include <sstream>
@@ -275,21 +276,42 @@ class OidBridge
 
     int (*plot_callback_)(const char*);
 
-    std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_;
+    std::map<MessageType, std::queue<std::unique_ptr<UiMessage>>> received_messages_;
 
 private:
     std::unique_ptr<UiMessage>
     try_get_stored_message(const MessageType& msg_type)
     {
-        auto find_msg_handler = received_messages_.find(msg_type);
+        // Find a queue of messages of specific type.
+        auto it_messages = received_messages_.find(msg_type);
+        if (it_messages == received_messages_.end())
+            return nullptr;
 
-        if (find_msg_handler != received_messages_.end()) {
-            unique_ptr<UiMessage> result = std::move(find_msg_handler->second);
-            received_messages_.erase(find_msg_handler);
-            return result;
+        // Check that queue isn't empty.
+        auto& queue_messages = it_messages->second;
+        if (queue_messages.empty())
+            return nullptr;
+
+        // Take the olders message from queue (FIFO).
+        unique_ptr<UiMessage> result = std::move(queue_messages.front());
+        queue_messages.pop();
+        return result;
+    }
+
+
+    static size_t get_queue_size_limit(MessageType header)
+    {
+        switch (header) {
+        // Commands that represent the state of the system.
+        // Only latest state should be used.
+        case MessageType::GetObservedSymbolsResponse:
+            return 1;
+        // Repeatable commands. Every command matters.
+        // Limit to avoid overflows.
+        case MessageType::PlotBufferRequest:
+        default:
+            return 512;
         }
-
-        return nullptr;
     }
 
 
@@ -304,22 +326,33 @@ private:
                 break;
             }
 
+            // Read the header of the message.
             MessageType header;
             client_->read(reinterpret_cast<char*>(&header),
                           static_cast<qint64>(sizeof(header)));
 
+            // Read the rest of the message depending on its type.
+            unique_ptr<UiMessage> result;
             switch (header) {
             case MessageType::PlotBufferRequest:
-                received_messages_[header] = decode_plot_buffer_request();
+                result = decode_plot_buffer_request();
                 break;
             case MessageType::GetObservedSymbolsResponse:
-                received_messages_[header] =
-                    decode_get_observed_symbols_response();
+                result = decode_get_observed_symbols_response();
                 break;
             default:
                 Logger::instance()->error("Received message with incorrect header");
                 break;
             }
+
+            // Put the message in the end of the queue.
+            auto& queue_messages = received_messages_[header];
+            queue_messages.push(std::move(result));
+
+            const size_t queue_size_limit = get_queue_size_limit(header);
+            while (!queue_messages.empty() && queue_messages.size() > queue_size_limit)
+                queue_messages.pop();
+
         } while (client_->bytesAvailable() > 0);
     }
 
