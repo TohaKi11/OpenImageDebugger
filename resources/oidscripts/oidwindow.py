@@ -41,6 +41,13 @@ class OpenImageDebuggerWindow(object):
         self._lib.oid_initialize.argtypes = [FETCH_BUFFER_CBK_TYPE, ctypes.py_object]
         self._lib.oid_initialize.restype = ctypes.c_void_p
 
+        self._lib.oid_log_message.argtypes = [
+            ctypes.c_void_p,
+            ctypes.py_object,
+            ctypes.py_object
+        ]
+        self._lib.oid_log_message.restype = None
+
         self._lib.oid_cleanup.argtypes = [ctypes.c_void_p]
         self._lib.oid_cleanup.restype = None
 
@@ -93,6 +100,14 @@ class OpenImageDebuggerWindow(object):
             return 'liboidbridge%s.dylib' % python_version
         elif PLATFORM_NAME == 'windows':
             return 'liboidbridge%s.dll' % python_version
+    
+    def log_message(self, level, message):
+        """
+        Adds a message to the common log.
+        """
+        self._lib.oid_log_message(
+            self._native_handler,
+            level, message)
 
     def plot_variable(self, requested_symbol):
         """
@@ -104,8 +119,9 @@ class OpenImageDebuggerWindow(object):
         that it can schedule its execution in a thread safe context.
         """
         if self._bridge is None:
-            print('[OpenImageDebugger] Could not plot symbol %s: Not a debugging'
-                  ' session.' % requested_symbol)
+            error_str = 'Could not plot symbol %s: Not a debugging session' % requested_symbol
+            print('[OpenImageDebugger] Warning. %s' % error_str)
+            self.log_message('warning', error_str)
             return 0
 
         try:
@@ -121,8 +137,9 @@ class OpenImageDebuggerWindow(object):
             self._bridge.queue_request(plot_callable)
             return 1
         except Exception as err:
-            print('[OpenImageDebugger] Error: Could not plot variable')
-            print(err)
+            error_str = 'Could not plot variable %s: %s' % (variable, str(err))
+            print('[OpenImageDebugger] Error. %s' % error_str)
+            self.log_message('error', error_str)
 
         return 0
 
@@ -214,6 +231,10 @@ class DeferredVariablePlotter(object):
 
         except Exception as err:
             import traceback
-            print('[OpenImageDebugger] Error: Could not plot variable')
-            print(err)
-            traceback.print_exc()
+
+            error_str = 'Could not plot variable %s: %s \n%s' % \
+                (self._variable, str(err), ''.join(traceback.format_exception()))
+            print('[OpenImageDebugger] Error. %s' % error_str)
+            self.log_message('error', error_str)
+
+            

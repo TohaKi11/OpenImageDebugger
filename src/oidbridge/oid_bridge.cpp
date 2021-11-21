@@ -166,6 +166,11 @@ class OidBridge
         return true;
     }
 
+    void log_message(spdlog::level::level_enum level, const std::string& message_str)
+    {
+        Logger::instance()->log(level, message_str);
+    }
+
     deque<string> get_observed_symbols()
     {
         assert(client_ != nullptr);
@@ -429,6 +434,47 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
     }
 
     return static_cast<AppHandler>(app);
+}
+
+
+void oid_log_message(AppHandler handler, PyObject* level_py, PyObject* message_py)
+{
+    PyGILRAII py_gil_raii;
+
+    assert(PyString_Check(level_py));
+    assert(PyString_Check(message_py));
+
+    OidBridge* app = static_cast<OidBridge*>(handler);
+
+    if (app == nullptr) {
+
+        const std::string error_str = "oid_log_message received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
+        return;
+    }
+
+    string level_str;
+    copy_py_string(level_str, level_py);
+
+    string message_str;
+    copy_py_string(message_str, message_py);
+
+    spdlog::level::level_enum level = spdlog::level::level_enum::info;
+    if (level_str == "trace")
+        level = spdlog::level::level_enum::trace;
+    else if (level_str == "debug")
+        level = spdlog::level::level_enum::debug;
+    else if (level_str == "info")
+        level = spdlog::level::level_enum::info;
+    else if (level_str == "warning")
+        level = spdlog::level::level_enum::warn;
+    else if (level_str == "error")
+        level = spdlog::level::level_enum::err;
+    else if (level_str == "critical")
+        level = spdlog::level::level_enum::critical;
+
+    app->log_message(level, message_str);
 }
 
 

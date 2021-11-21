@@ -40,6 +40,8 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
             while not self._window.is_ready():
                 time.sleep(0.1)
 
+        self._window.log_message('info', 'The debugger has stopped on a breakpoint')
+
         # Update buffers being visualized
         observed_buffers = self._window.get_observed_buffers()
         for buffer_name in observed_buffers:
