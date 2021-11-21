@@ -57,8 +57,9 @@ class LldbBridge(BridgeInterface):
             thread_id = thread.id if thread is not None else 0
             frame_idx = frame.idx if thread is not None else 0
 
-            frame_was_updated = thread_id != self._last_thread_id or \
-                                frame_idx != self._last_frame_idx
+            frame_was_updated = \
+                (self._last_thread_id != 0 and thread_id != self._last_thread_id) or \
+                (self._last_frame_idx != 0 and frame_idx != self._last_frame_idx)
 
             self._last_thread_id = thread_id
             self._last_frame_idx = frame_idx
@@ -81,10 +82,14 @@ class LldbBridge(BridgeInterface):
                 pending_events = self._event_queue
                 self._event_queue = []
 
+            is_stop_detected = False
             while pending_events:
                 event = pending_events.pop(0)
-                if event == 'stop' and self._event_handler is not None:
-                    self._event_handler.stop_handler()
+                if event == 'stop':
+                    is_stop_detected = True
+
+            if is_stop_detected and self._event_handler is not None:
+                self._event_handler.stop_handler()
 
             while requests_to_process:
                 callback = requests_to_process.pop(0)
