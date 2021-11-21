@@ -49,6 +49,9 @@ void MainWindow::decode_set_available_symbols()
         }
     }
 
+    // Clean previous session buffers in order to request them only once at app startup.
+    previous_session_buffers_.clear();
+
     completer_updated_ = true;
 }
 

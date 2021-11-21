@@ -167,6 +167,7 @@ public Q_SLOTS:
   private Q_SLOTS:
     ///
     // Assorted methods - private slots - implemented in main_window.cpp
+    void persist_settings_previous_session(QSettings& settings);
     void persist_settings();
 
   private:

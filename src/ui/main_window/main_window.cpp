@@ -154,13 +154,11 @@ void MainWindow::request_render_update()
 }
 
 
-void MainWindow::persist_settings()
+void MainWindow::persist_settings_previous_session(QSettings& settings)
 {
-    using BufferExpiration = QPair<QString, QDateTime>;
+    settings.beginGroup("PreviousSession");
 
-    QSettings settings(QSettings::Format::IniFormat,
-                       QSettings::Scope::UserScope,
-                       "OpenImageDebugger");
+    using BufferExpiration = QPair<QString, QDateTime>;
 
     QList<BufferExpiration> persisted_session_buffers;
 
@@ -174,7 +172,7 @@ void MainWindow::persist_settings()
 
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
-    for (const auto& prev_buff : previous_session_buffers_qlist) {
+    foreach (const auto& prev_buff, previous_session_buffers_qlist) {
         const string buff_name_std_str = prev_buff.first.toStdString();
 
         const bool being_viewed =
@@ -183,9 +181,7 @@ void MainWindow::persist_settings()
             removed_buffer_names_.find(buff_name_std_str) !=
             removed_buffer_names_.end();
 
-        if (was_removed) {
-            previous_session_buffers_.erase(buff_name_std_str);
-        } else if (!being_viewed && prev_buff.second >= now) {
+        if (!being_viewed && !was_removed && prev_buff.second >= now) {
             persisted_session_buffers.append(prev_buff);
         }
     }
@@ -195,6 +191,19 @@ void MainWindow::persist_settings()
             BufferExpiration(held_buffer.first.c_str(), next_expiration));
     }
 
+    settings.setValue("buffers",
+                      QVariant::fromValue(persisted_session_buffers));
+
+    settings.endGroup();
+}
+
+
+void MainWindow::persist_settings()
+{
+    QSettings settings(QSettings::Format::IniFormat,
+                       QSettings::Scope::UserScope,
+                       "OpenImageDebugger");
+
     // Write default suffix for buffer export
     settings.setValue("Export/default_export_suffix", default_export_suffix_);
 
@@ -202,8 +211,7 @@ void MainWindow::persist_settings()
     settings.setValue("Rendering/maximum_framerate", render_framerate_);
 
     // Write previous session symbols
-    settings.setValue("PreviousSession/buffers",
-                      QVariant::fromValue(persisted_session_buffers));
+    persist_settings_previous_session(settings);
 
     // Write UI geometry.
     settings.beginGroup("UI");
