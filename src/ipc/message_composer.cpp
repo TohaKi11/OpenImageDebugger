@@ -28,6 +28,11 @@
 #include "string_block.h"
 
 
+MessageComposer::MessageComposer(QTcpSocket* socket)
+    : socket_(socket)
+{
+}
+
 MessageComposer& MessageComposer::push(uint8_t* buffer, size_t size)
 {
     push(size);
@@ -36,22 +41,22 @@ MessageComposer& MessageComposer::push(uint8_t* buffer, size_t size)
     return *this;
 }
 
-void MessageComposer::send(QTcpSocket* socket) const
+void MessageComposer::send() const
 {
     for (const auto& block : message_blocks_) {
         qint64 offset = 0;
         do {
             offset +=
-                socket->write(reinterpret_cast<const char*>(block->data()),
+                socket_->write(reinterpret_cast<const char*>(block->data()),
                               static_cast<qint64>(block->size()));
 
             if (offset < static_cast<qint64>(block->size())) {
-                socket->waitForBytesWritten();
+                socket_->waitForBytesWritten();
             }
         } while (offset < static_cast<qint64>(block->size()));
     }
 
-    socket->waitForBytesWritten();
+    socket_->waitForBytesWritten();
 }
 
 void MessageComposer::clear()

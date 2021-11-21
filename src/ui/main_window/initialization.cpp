@@ -27,7 +27,6 @@
 #include <iostream>
 
 #include <QDateTime>
-#include <QDebug>
 #include <QFontDatabase>
 #include <QShortcut>
 #include <QHostAddress>

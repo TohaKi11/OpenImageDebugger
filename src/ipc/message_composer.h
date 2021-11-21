@@ -37,6 +37,8 @@
 class MessageComposer
 {
   public:
+    MessageComposer(QTcpSocket* socket);
+
     template <typename PrimitiveType>
     MessageComposer& push(const PrimitiveType& value)
     {
@@ -49,11 +51,12 @@ class MessageComposer
 
     MessageComposer& push(uint8_t* buffer, size_t size);
 
-    void send(QTcpSocket* socket) const;
+    void send() const;
 
     void clear();
 
   private:
+    QTcpSocket* socket_;
     std::deque<std::unique_ptr<MessageBlock>> message_blocks_;
 };
 

@@ -135,6 +135,8 @@ class OidBridge
         ui_proc_.waitForStart();
 #endif
 
+        Logger::instance()->info("UI app started");
+
         wait_for_client();
 
         return client_ != nullptr;
@@ -162,8 +164,11 @@ class OidBridge
     {
         assert(client_ != nullptr);
 
-        MessageComposer message_composer;
-        message_composer.push(MessageType::GetObservedSymbols).send(client_);
+        MessageComposer message_composer(client_);
+        message_composer.push(MessageType::GetObservedSymbols)
+                .send();
+
+        Logger::instance()->info("Sent request to provide observed symbols");
 
         auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
         if (response != nullptr) {
@@ -180,10 +185,25 @@ class OidBridge
     {
         assert(client_ != nullptr);
 
-        MessageComposer message_composer;
+        MessageComposer message_composer(client_);
         message_composer.push(MessageType::SetAvailableSymbols)
             .push(available_vars)
-            .send(client_);
+            .send();
+
+        {
+            std::stringstream ss;
+            bool isFirst = true;
+            for (const auto& available_var : available_vars) {
+
+                if (isFirst)
+                    isFirst = false;
+                else
+                    ss << ", ";
+
+                ss << available_var;
+            }
+            Logger::instance()->info("Sent available symbols: {}", ss.str());
+        }
     }
 
     void run_event_loop()
@@ -212,7 +232,7 @@ class OidBridge
                      uint8_t* buff_ptr,
                      size_t buff_length)
     {
-        MessageComposer message_composer;
+        MessageComposer message_composer(client_);
         message_composer.push(MessageType::PlotBufferContents)
             .push(variable_name_str)
             .push(display_name_str)
@@ -224,7 +244,9 @@ class OidBridge
             .push(buff_stride)
             .push(buff_type)
             .push(buff_ptr, buff_length)
-            .send(client_);
+            .send();
+
+        Logger::instance()->info("Sent symbol data: {}", display_name_str);
     }
 
     ~OidBridge()
@@ -298,6 +320,9 @@ private:
         auto response = new PlotBufferRequestMessage();
         MessageDecoder message_decoder(client_);
         message_decoder.read(response->buffer_name);
+
+        Logger::instance()->info("Received request to provide symbol data: {}", response->buffer_name);
+
         return unique_ptr<UiMessage>(response);
     }
 
@@ -310,6 +335,22 @@ private:
         MessageDecoder message_decoder(client_);
         message_decoder.read<std::deque<std::string>, std::string>(
             response->observed_symbols);
+
+
+        {
+            std::stringstream ss;
+            bool isFirst = true;
+            for (const auto& name : response->observed_symbols) {
+
+                if (isFirst)
+                    isFirst = false;
+                else
+                    ss << ", ";
+
+                ss << name;
+            }
+            Logger::instance()->info("Received observed symbols: {}", ss.str());
+        }
 
         return unique_ptr<UiMessage>(response);
     }
@@ -345,6 +386,8 @@ private:
                 Logger::instance()->error("No clients connected to OpenImageDebugger server");
 
             client_ = server_.nextPendingConnection();
+
+            Logger::instance()->info("UI app has been connected to OpenImageDebugger server");
         }
     }
 };

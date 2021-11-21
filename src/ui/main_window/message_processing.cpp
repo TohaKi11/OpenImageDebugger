@@ -23,11 +23,10 @@
  * IN THE SOFTWARE.
  */
 
-#include <QDebug>
-
 #include "main_window.h"
 #include "ipc/message_composer.h"
 #include "ipc/message_decoder.h"
+#include "logger/logger.h"
 
 #include "ui_main_window.h"
 
@@ -40,9 +39,9 @@ void MainWindow::decode_set_available_symbols()
     MessageDecoder message_decoder(&socket_);
     message_decoder.read<QStringList, QString>(available_vars_);
 
-    qDebug() << "!!!!!!! Received available symbols: " << available_vars_;
+    Logger::instance()->info("Received available symbols: {}", available_vars_.join(", ").toStdString());
 
-    for (const auto& symbol_value : available_vars_) {
+    foreach (const auto& symbol_value, available_vars_) {
         // Plot buffer if it was available in the previous session
         if (previous_session_buffers_.find(symbol_value.toStdString()) !=
             previous_session_buffers_.end()) {
@@ -56,19 +55,29 @@ void MainWindow::decode_set_available_symbols()
 
 void MainWindow::respond_get_observed_symbols()
 {
-    qDebug() << "!!!!!!! Received command to show observed symbols";
-    QStringList observed_vars;  //DAR
+    Logger::instance()->info("Received request to provide observed symbols");
 
-    MessageComposer message_composer;
+    MessageComposer message_composer(&socket_);
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(held_buffers_.size());
-    for (const auto& name : held_buffers_) {
+    for (const auto& name : held_buffers_)
         message_composer.push(name.first);
-        observed_vars.push_back(QString::fromStdString(name.first));    //DAR
-    }
-    message_composer.send(&socket_);
+    message_composer.send();
 
-    qDebug() << "!!!!!!! Sent observed symbols: " << observed_vars;
+    {
+        std::stringstream ss;
+        bool isFirst = true;
+        for (const auto& name : held_buffers_) {
+
+            if (isFirst)
+                isFirst = false;
+            else
+                ss << ", ";
+
+            ss << name.first;
+        }
+        Logger::instance()->info("Sent observed symbols: {}", ss.str());
+    }
 }
 
 
@@ -104,7 +113,7 @@ void MainWindow::decode_plot_buffer_contents()
         .read(buff_type)
         .read(buff_contents);
 
-    qDebug() << "!!!!!!! Received symbol data: " << QString::fromStdString(display_name_str);
+    Logger::instance()->info("Received symbol data: {}", display_name_str);
 
     auto buffer_stage = stages_.find(variable_name_str);
 
@@ -244,7 +253,7 @@ void MainWindow::decode_incoming_messages()
         decode_plot_buffer_contents();
         break;
     default:
-        qDebug() << "!!!!!!! Received undefined command";
+        Logger::instance()->info("Received undefined command");
         break;
     }
 }
@@ -252,9 +261,10 @@ void MainWindow::decode_incoming_messages()
 
 void MainWindow::request_plot_buffer(const char* buffer_name)
 {
-    MessageComposer message_composer;
+    MessageComposer message_composer(&socket_);
     message_composer.push(MessageType::PlotBufferRequest)
         .push(std::string(buffer_name))
-        .send(&socket_);
-    qDebug() << "!!!!!!! Sent symbol data request: " << QString::fromLocal8Bit(buffer_name);
+        .send();
+
+    Logger::instance()->info("Sent request to provide symbol data: {}", buffer_name);
 }
