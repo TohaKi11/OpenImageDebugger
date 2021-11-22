@@ -474,9 +474,6 @@ void oid_log_message(AppHandler handler, PyObject* level_py, PyObject* message_p
 {
     PyGILRAII py_gil_raii;
 
-    assert(PyString_Check(level_py));
-    assert(PyString_Check(message_py));
-
     OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
