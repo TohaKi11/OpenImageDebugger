@@ -126,20 +126,14 @@ class LldbBridge(BridgeInterface):
         thread = self._get_thread(process)
         frame = self._get_frame(thread)
 
-        print("trace 0", variable)
-
         if frame is None:
             # Could not fetch frame from debugger state
             return None
 
         picked_obj = frame.EvaluateExpression(variable)  # type: lldb.SBValue
 
-        print("trace 1")
-
         buffer_metadata = self._type_bridge.get_buffer_metadata(
             variable, SymbolWrapper(picked_obj), self)
-
-        print("trace 2")
 
         if buffer_metadata is None:
             # Invalid symbol for current frame
@@ -151,7 +145,6 @@ class LldbBridge(BridgeInterface):
             buffer_metadata['type'],
             buffer_metadata['row_stride']
         )
-        print("trace 3")
 
         # Check if buffer is initialized
         if buffer_metadata['pointer'] == 0x0:
@@ -163,17 +156,12 @@ class LldbBridge(BridgeInterface):
 
         buffer_metadata['variable_name'] = variable
 
-        print("trace 4")
         error_ref = lldb.SBError()
         buffer_metadata['pointer'] = memoryview(process.ReadMemory(
             buffer_metadata['pointer'], bufsize, error_ref))
 
-        print("trace 5")
-
         if not error_ref.Success():
             raise Exception('Variable %s metadata retrieve failed. Failed to retrieve memory buffer: %s' % (variable, str(error_ref)))
-
-        print("trace 6")
 
         return buffer_metadata
 
