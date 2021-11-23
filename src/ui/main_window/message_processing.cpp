@@ -97,11 +97,11 @@ QListWidgetItem* MainWindow::add_image_list_item(const std::string& variable_nam
     const QPixmap buffer_pixmap = draw_image_list_icon_stub();
 
     // Construct a new list widget item.
-    QListWidgetItem* item = new QListWidgetItem(buffer_pixmap, variable_name_str.c_str(), ui_->imageList);
+    QListWidgetItem* item = new QListWidgetItem(buffer_pixmap, variable_name_str.c_str(), ui_->imageList_watch);
     item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
     item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
                    Qt::ItemIsDragEnabled);
-    ui_->imageList->addItem(item);
+    ui_->imageList_watch->addItem(item);
 
     return item;
 }
@@ -110,9 +110,9 @@ QListWidgetItem* MainWindow::add_image_list_item(const std::string& variable_nam
 QListWidgetItem* MainWindow::find_image_list_item(const std::string& variable_name_str)
 {
     // Looking for corresponding item...
-    for (int i = 0; i < ui_->imageList->count(); ++i) {
+    for (int i = 0; i < ui_->imageList_watch->count(); ++i) {
 
-        QListWidgetItem* item = ui_->imageList->item(i);
+        QListWidgetItem* item = ui_->imageList_watch->item(i);
         if (item->data(Qt::UserRole) != variable_name_str.c_str())
             continue;
 

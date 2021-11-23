@@ -240,9 +240,9 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 
 void MainWindow::remove_selected_buffer()
 {
-    if (ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
+    if (ui_->imageList_watch->count() > 0 && currently_selected_stage_ != nullptr) {
         QListWidgetItem* removed_item =
-            ui_->imageList->takeItem(ui_->imageList->currentRow());
+            ui_->imageList_watch->takeItem(ui_->imageList_watch->currentRow());
         string buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
         stages_.erase(buffer_name);
@@ -347,9 +347,9 @@ void MainWindow::export_buffer()
 
 void MainWindow::show_context_menu(const QPoint& pos)
 {
-    if (ui_->imageList->itemAt(pos) != nullptr) {
+    if (ui_->imageList_watch->itemAt(pos) != nullptr) {
         // Handle global position
-        QPoint globalPos = ui_->imageList->mapToGlobal(pos);
+        QPoint globalPos = ui_->imageList_watch->mapToGlobal(pos);
 
         // Create menu and insert context actions
         QMenu myMenu(this);
@@ -358,7 +358,7 @@ void MainWindow::show_context_menu(const QPoint& pos)
             myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
 
         // Add parameter to action: buffer name
-        exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
+        exportAction->setData(ui_->imageList_watch->itemAt(pos)->data(Qt::UserRole));
 
         // Show context menu at handling position
         myMenu.exec(globalPos);

@@ -350,7 +350,7 @@ void MainWindow::initialize_shortcuts()
             SLOT(setFocus()));
 
     QShortcut* buffer_removal_shortcut_ =
-        new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList);
+        new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList_watch);
     connect(buffer_removal_shortcut_,
             SIGNAL(activated()),
             this,
@@ -396,7 +396,7 @@ void MainWindow::initialize_symbol_completer()
 
 void MainWindow::initialize_left_pane()
 {
-    connect(ui_->imageList,
+    connect(ui_->imageList_watch,
             SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
             this,
             SLOT(buffer_selected(QListWidgetItem*)));
@@ -406,8 +406,8 @@ void MainWindow::initialize_left_pane()
             this,
             SLOT(symbol_selected()));
 
-    ui_->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui_->imageList,
+    ui_->imageList_watch->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui_->imageList_watch,
             SIGNAL(customContextMenuRequested(const QPoint&)),
             this,
             SLOT(show_context_menu(const QPoint&)));
