@@ -151,13 +151,15 @@ public Q_SLOTS:
 
     void buffer_selected(QListWidgetItem* item);
 
+    void remove_specific_buffer(const std::string& symbol_name_str);
     void remove_selected_buffer();
 
     void symbol_selected();
 
     void symbol_completed(QString symbol_name_str);
 
-    void export_buffer();
+    void remove_buffer_action();
+    void export_buffer_action();
 
     void show_context_menu(const QPoint& pos);
 

@@ -350,7 +350,7 @@ void MainWindow::initialize_shortcuts()
             SLOT(setFocus()));
 
     QShortcut* buffer_removal_shortcut_ =
-        new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList_watch);
+        new QShortcut(QKeySequence(Qt::Key_Delete, Qt::Key_Backspace), ui_->imageList_watch);
     connect(buffer_removal_shortcut_,
             SIGNAL(activated()),
             this,

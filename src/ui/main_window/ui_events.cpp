@@ -239,25 +239,39 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 }
 
 
+void MainWindow::remove_specific_buffer(const std::string& symbol_name_str)
+{
+    if (symbol_name_str.empty())
+        return;
+
+    QListWidgetItem* item = find_image_list_item(symbol_name_str);
+    if (item != nullptr)
+        delete item;
+
+    stages_.erase(symbol_name_str);
+    held_buffers_.erase(symbol_name_str);
+
+    removed_buffer_names_.insert(symbol_name_str);
+
+    if (stages_.size() == 0) {
+        set_currently_selected_stage(nullptr);
+    }
+
+    persist_settings_deferred();
+}
+
+
 void MainWindow::remove_selected_buffer()
 {
-    if (ui_->imageList_watch->count() > 0 && currently_selected_stage_ != nullptr) {
-        QListWidgetItem* removed_item =
-            ui_->imageList_watch->takeItem(ui_->imageList_watch->currentRow());
-        string buffer_name =
-            removed_item->data(Qt::UserRole).toString().toStdString();
-        stages_.erase(buffer_name);
-        held_buffers_.erase(buffer_name);
-        delete removed_item;
+    QListWidgetItem* item = ui_->imageList_watch->currentItem();
+    if (item == nullptr)
+        return;
 
-        removed_buffer_names_.insert(buffer_name);
+    const string symbol_name_str = item->data(Qt::UserRole).toString().toStdString();
+    if (symbol_name_str.empty())
+        return;
 
-        if (stages_.size() == 0) {
-            set_currently_selected_stage(nullptr);
-        }
-
-        persist_settings_deferred();
-    }
+    remove_specific_buffer(symbol_name_str);
 }
 
 
@@ -287,12 +301,37 @@ void MainWindow::symbol_completed(QString symbol_name_str)
 }
 
 
-void MainWindow::export_buffer()
+void MainWindow::remove_buffer_action()
 {
-    auto sender_action(static_cast<QAction*>(sender()));
+    auto sender_action = qobject_cast<QAction*>(sender());
+    if (sender_action == nullptr)
+        return;
 
-    auto stage =
-        stages_.find(sender_action->data().toString().toStdString())->second;
+    const std::string symbol_name_str = sender_action->data().toString().toStdString();
+    if (symbol_name_str.empty())
+        return;
+
+    remove_specific_buffer(symbol_name_str);
+}
+
+
+void MainWindow::export_buffer_action()
+{
+    auto sender_action = qobject_cast<QAction*>(sender());
+    if (sender_action == nullptr)
+        return;
+
+    const std::string symbol_name_str = sender_action->data().toString().toStdString();
+    if (symbol_name_str.empty())
+        return;
+
+    auto it_stage = stages_.find(symbol_name_str);
+    if (it_stage == stages_.end())
+        return;
+
+    auto stage = it_stage->second;
+    if (stage == nullptr)
+        return;
 
     GameObject* buffer_obj = stage->get_game_object("buffer");
     Buffer* component = buffer_obj->get_component<Buffer>("buffer_component");
@@ -348,22 +387,28 @@ void MainWindow::export_buffer()
 
 void MainWindow::show_context_menu(const QPoint& pos)
 {
-    if (ui_->imageList_watch->itemAt(pos) != nullptr) {
-        // Handle global position
-        QPoint globalPos = ui_->imageList_watch->mapToGlobal(pos);
+    // Get item at desired position.
+    QListWidgetItem* item = ui_->imageList_watch->itemAt(pos);
+    if (item == nullptr)
+        return;
 
-        // Create menu and insert context actions
-        QMenu myMenu(this);
+    // Get name of buffer assigned to a specific item.
+    const QString symbol_name_str = item->data(Qt::UserRole).toString();
+    if (symbol_name_str.isEmpty())
+        return;
 
-        QAction* exportAction =
-            myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
+    // Create menu and insert context actions
+    QMenu myMenu(this);
 
-        // Add parameter to action: buffer name
-        exportAction->setData(ui_->imageList_watch->itemAt(pos)->data(Qt::UserRole));
+    QAction* removeAction = myMenu.addAction("Remove", this, SLOT(remove_buffer_action()));
+    removeAction->setData(symbol_name_str);
 
-        // Show context menu at handling position
-        myMenu.exec(globalPos);
-    }
+    QAction* exportAction = myMenu.addAction("Export buffer", this, SLOT(export_buffer_action()()));
+    exportAction->setData(symbol_name_str);
+
+    // Show context menu at handling position
+    QPoint globalPos = ui_->imageList_watch->mapToGlobal(pos);
+    myMenu.exec(globalPos);
 }
 
 
