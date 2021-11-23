@@ -130,6 +130,8 @@ class OpenImageDebuggerWindow(object):
             else:
                 variable = requested_symbol
 
+            self.log_message('info', "Scheduled symbol %s loading" % variable)
+
             plot_callable = DeferredVariablePlotter(variable,
                                                     self._lib,
                                                     self._bridge,
@@ -220,14 +222,19 @@ class DeferredVariablePlotter(object):
 
     def __call__(self):
         try:
+
+            self.log_message('info', "Start loading symbol %s" % self._variable)
             buffer_metadata = self._bridge.get_buffer_metadata(self._variable)
 
-            if buffer_metadata is None:
-                return
+            assert buffer_metadata is not None, "No metadata loaded"
+
+            self.log_message('info', "Metadata of symbol %s have been loaded" % self._variable)
 
             self._lib.oid_plot_buffer(
                 self._native_handler,
                 buffer_metadata)
+
+            self.log_message('info', "Metadata of symbol %s have been sent" % self._variable)
 
         except Exception as err:
             import traceback
@@ -236,5 +243,13 @@ class DeferredVariablePlotter(object):
                 (self._variable, str(err), ''.join(traceback.format_exc()))
             print('[OpenImageDebugger] Error. %s' % error_str)
             self.log_message('error', error_str)
+    
+    def log_message(self, level, message):
+        """
+        Adds a message to the common log.
+        """
+        self._lib.oid_log_message(
+            self._native_handler,
+            level, message)
 
             
