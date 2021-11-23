@@ -233,7 +233,7 @@ class DeferredVariablePlotter(object):
             import traceback
 
             error_str = 'Could not plot variable %s: %s \n%s' % \
-                (self._variable, str(err), ''.join(traceback.format_exception()))
+                (self._variable, str(err), ''.join(traceback.format_exc()))
             print('[OpenImageDebugger] Error. %s' % error_str)
             self.log_message('error', error_str)
 
