@@ -294,10 +294,14 @@ void MainWindow::symbol_completed(QString symbol_name_str)
     ui_->symbolList->setText("");
     ui_->symbolList->clearFocus();
 
-    // Construct a new list widget if needed
+    // Construct a new list item if needed
     QListWidgetItem* item = find_image_list_item(symbol_name_stdstr);
     if (item == nullptr)
         item = add_image_list_item(symbol_name_stdstr);
+
+    // Select newly created item.
+    item->listWidget()->setFocus();
+    item->listWidget()->setCurrentItem(item);
 }
 
 
