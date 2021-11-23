@@ -53,6 +53,9 @@ void disable_inputs(const initializer_list<QLineEdit*>& inputs)
 
 void MainWindow::reset_ac_min_labels()
 {
+    if (currently_selected_stage_ == nullptr)
+        return;
+
     GameObject* buffer_obj = currently_selected_stage_->get_game_object("buffer");
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_min  = buffer->min_buffer_values();
@@ -87,6 +90,9 @@ void MainWindow::reset_ac_min_labels()
 
 void MainWindow::reset_ac_max_labels()
 {
+    if (currently_selected_stage_ == nullptr)
+        return;
+
     GameObject* buffer_obj = currently_selected_stage_->get_game_object("buffer");
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_max  = buffer->max_buffer_values();
@@ -168,37 +174,39 @@ void MainWindow::ac_c4_max_update()
 
 void MainWindow::ac_min_reset()
 {
-    if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
+    if (currently_selected_stage_ == nullptr)
+        return;
+
+    GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->recompute_min_color_values();
-        buff->compute_contrast_brightness_parameters();
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    buff->recompute_min_color_values();
+    buff->compute_contrast_brightness_parameters();
 
-        // Update inputs
-        reset_ac_min_labels();
+    // Update inputs
+    reset_ac_min_labels();
 
-        request_render_update_ = true;
-        request_icons_update_ = true;
-    }
+    request_render_update_ = true;
+    request_icons_update_ = true;
 }
 
 
 void MainWindow::ac_max_reset()
 {
-    if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
+    if (currently_selected_stage_ == nullptr)
+        return;
+
+    GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->recompute_max_color_values();
-        buff->compute_contrast_brightness_parameters();
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    buff->recompute_max_color_values();
+    buff->compute_contrast_brightness_parameters();
 
-        // Update inputs
-        reset_ac_max_labels();
+    // Update inputs
+    reset_ac_max_labels();
 
-        request_render_update_ = true;
-        request_icons_update_ = true;
-    }
+    request_render_update_ = true;
+    request_icons_update_ = true;
 }
 
 
@@ -215,29 +223,33 @@ void MainWindow::ac_toggle(bool is_checked)
 
 void MainWindow::set_ac_min_value(int idx, float value)
 {
-    if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->min_buffer_values()[idx] = value;
-        buff->compute_contrast_brightness_parameters();
+    if (currently_selected_stage_ == nullptr)
+        return;
 
-        request_render_update_ = true;
-        request_icons_update_ = true;
-    }
+    GameObject* buffer_obj =
+            currently_selected_stage_->get_game_object("buffer");
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    buff->min_buffer_values()[idx] = value;
+    buff->compute_contrast_brightness_parameters();
+
+    request_render_update_ = true;
+    request_icons_update_ = true;
 }
+
 
 
 void MainWindow::set_ac_max_value(int idx, float value)
 {
-    if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->max_buffer_values()[idx] = value;
-        buff->compute_contrast_brightness_parameters();
+    if (currently_selected_stage_ == nullptr)
+        return;
 
-        request_render_update_ = true;
-        request_icons_update_ = true;
-    }
+    GameObject* buffer_obj =
+            currently_selected_stage_->get_game_object("buffer");
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    buff->max_buffer_values()[idx] = value;
+    buff->compute_contrast_brightness_parameters();
+
+    request_render_update_ = true;
+    request_icons_update_ = true;
 }
+

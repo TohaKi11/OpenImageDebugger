@@ -280,15 +280,17 @@ void MainWindow::decode_plot_buffer_contents()
     if (item == nullptr)
         item = add_image_list_item(variable_name_str);
 
+    // In case if item is selected - show it
+    if (item->isSelected() && item->listWidget()->isVisible())
+        buffer_selected(item);
+
     // Update icon and text of corresponding item in image list
     repaint_image_list_icon(variable_name_str);
     update_image_list_label(variable_name_str, label_str);
 
     // Update AC values
-    if (currently_selected_stage_ != nullptr) {
-        reset_ac_min_labels();
-        reset_ac_max_labels();
-    }
+    reset_ac_min_labels();
+    reset_ac_max_labels();
 
     // Update list of observed symbols in settings
     persist_settings_deferred();

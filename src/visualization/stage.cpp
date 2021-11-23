@@ -299,20 +299,16 @@ const uint8_t* Stage::get_stub_buffer()
 
 bool Stage::recenter_camera() const
 {
+
     const auto it_camera = all_game_objects.find("camera");
     if (it_camera == all_game_objects.end())
         return false;
 
-    const auto& map_components = it_camera->second->get_components();
-    const auto it_camera_component = map_components.find("camera_component");
-    if (it_camera_component == map_components.end())
+    Camera* camera = it_camera->second->get_component<Camera>("camera_component");
+    if (camera == nullptr)
         return false;
 
-    const auto camera_shr_ptr = std::dynamic_pointer_cast<Camera>(it_camera_component->second);
-    if (!camera_shr_ptr)
-        return false;
-
-    camera_shr_ptr->recenter_camera();
+    camera->recenter_camera();
 
     return true;
 }

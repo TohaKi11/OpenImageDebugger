@@ -228,7 +228,7 @@ public Q_SLOTS:
 
     void set_currently_selected_stage(Stage* stage);
 
-    vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
+    std::pair<int, int> get_stage_coordinates(float pos_window_x, float pos_window_y);
 
     ///
     // Communication with debugger bridge

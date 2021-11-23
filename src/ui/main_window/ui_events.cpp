@@ -226,15 +226,16 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
     if (item == nullptr)
         return;
 
-    auto stage =
-        stages_.find(item->data(Qt::UserRole).toString().toStdString());
-    if (stage != stages_.end()) {
+    auto stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
+    if (stage != stages_.end())
         set_currently_selected_stage(stage->second.get());
-        reset_ac_min_labels();
-        reset_ac_max_labels();
+    else
+        set_currently_selected_stage(nullptr);
 
-        update_status_bar();
-    }
+    reset_ac_min_labels();
+    reset_ac_max_labels();
+
+    update_status_bar();
 }
 
 

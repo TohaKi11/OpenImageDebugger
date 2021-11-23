@@ -255,8 +255,11 @@ void MainWindow::persist_settings()
 }
 
 
-vec4 MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
+std::pair<int, int> MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
 {
+    if (currently_selected_stage_ == nullptr)
+        return std::make_pair(0, 0);
+
     GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
     Camera* cam         = cam_obj->get_component<Camera>("camera_component");
 
@@ -278,41 +281,48 @@ vec4 MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
     mouse_pos +=
         vec4(buffer->buffer_width_f / 2.f, buffer->buffer_height_f / 2.f, 0, 0);
 
-    return mouse_pos;
+    return std::make_pair(
+                static_cast<int>(floor(mouse_pos.x())),
+                static_cast<int>(floor(mouse_pos.y()))
+                );
 }
 
 
 void MainWindow::update_status_bar()
 {
-    if (currently_selected_stage_ != nullptr) {
-        stringstream message;
+    if (currently_selected_stage_ == nullptr) {
 
-        GameObject* cam_obj =
-            currently_selected_stage_->get_game_object("camera");
-        Camera* cam = cam_obj->get_component<Camera>("camera_component");
-
-        GameObject* buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
-
-        float mouse_x = ui_->bufferPreview->mouse_x();
-        float mouse_y = ui_->bufferPreview->mouse_y();
-
-        vec4 mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
-
-        message << std::fixed << std::setprecision(3) << "("
-                << static_cast<int>(floor(mouse_pos.x())) << ", "
-                << static_cast<int>(floor(mouse_pos.y())) << ")\t"
-                << cam->compute_zoom() * 100.0f << "%";
-        message << " val=";
-
-        buffer->get_pixel_info(
-            message,
-            static_cast<int>(floor(mouse_pos.x())),
-            static_cast<int>(floor(mouse_pos.y())));
-
-        status_bar_->setText(message.str().c_str());
+        status_bar_->clear();
+        return;
     }
+
+    stringstream message;
+
+    GameObject* cam_obj =
+            currently_selected_stage_->get_game_object("camera");
+    Camera* cam = cam_obj->get_component<Camera>("camera_component");
+
+    GameObject* buffer_obj =
+            currently_selected_stage_->get_game_object("buffer");
+    Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
+
+    float mouse_x = ui_->bufferPreview->mouse_x();
+    float mouse_y = ui_->bufferPreview->mouse_y();
+
+    const std::pair<int, int> mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
+
+    message << std::fixed << std::setprecision(5) << "("
+            << mouse_pos.first << ", "
+            << mouse_pos.second << ")\t"
+            << cam->compute_zoom() * 100.0f << "%";
+    message << " val=";
+
+    buffer->get_pixel_info(
+                message,
+                mouse_pos.first,
+                mouse_pos.second);
+
+    status_bar_->setText(message.str().c_str());
 }
 
 
