@@ -24,6 +24,7 @@
  */
 
 #include <set>
+#include <limits>
 
 #include "stage.h"
 
@@ -52,14 +53,7 @@ Stage::Stage(MainWindow* main_wnd)
 }
 
 
-bool Stage::initialize(const uint8_t* buffer,
-                       int buffer_width_i,
-                       int buffer_height_i,
-                       int channels,
-                       BufferType type,
-                       int step,
-                       const string& pixel_layout,
-                       bool transpose_buffer)
+bool Stage::initialize()
 {
     std::shared_ptr<GameObject> camera_obj = std::make_shared<GameObject>();
 
@@ -85,14 +79,15 @@ bool Stage::initialize(const uint8_t* buffer,
     std::shared_ptr<Buffer> buffer_component =
         std::make_shared<Buffer>(buffer_obj.get(), main_window->gl_canvas());
 
-    buffer_component->buffer          = buffer;
-    buffer_component->channels        = channels;
-    buffer_component->type            = type;
-    buffer_component->buffer_width_f  = static_cast<float>(buffer_width_i);
-    buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
-    buffer_component->step            = step;
-    buffer_component->transpose       = transpose_buffer;
-    buffer_component->set_pixel_layout(pixel_layout);
+    // Provide stub data.
+    buffer_component->buffer          = get_stub_buffer();
+    buffer_component->channels        = 1;
+    buffer_component->type            = BufferType::UnsignedByte;
+    buffer_component->buffer_width_f  = 1.0f;
+    buffer_component->buffer_height_f = 1.0f;
+    buffer_component->step            = 1;
+    buffer_component->transpose       = false;
+    buffer_component->set_pixel_layout("bgra");
     buffer_obj->add_component("buffer_component", buffer_component);
 
     all_game_objects["buffer"] = buffer_obj;
@@ -131,11 +126,18 @@ bool Stage::buffer_update(const uint8_t* buffer,
     if (buffer_component == nullptr)
         return false;
 
+    const float buffer_width_f = static_cast<float>(buffer_width_i);
+    const float buffer_height_f = static_cast<float>(buffer_height_i);
+
+    const bool is_size_updated =
+            std::abs(buffer_component->buffer_width_f - buffer_width_f) > std::numeric_limits<float>::epsilon() ||
+            std::abs(buffer_component->buffer_height_f - buffer_height_f) > std::numeric_limits<float>::epsilon();
+
     buffer_component->buffer          = buffer;
     buffer_component->channels        = channels;
     buffer_component->type            = type;
-    buffer_component->buffer_width_f  = static_cast<float>(buffer_width_i);
-    buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
+    buffer_component->buffer_width_f  = buffer_width_f;
+    buffer_component->buffer_height_f = buffer_height_f;
     buffer_component->step            = step;
     buffer_component->transpose       = transpose_buffer;
     buffer_component->set_pixel_layout(pixel_layout);
@@ -158,6 +160,10 @@ bool Stage::buffer_update(const uint8_t* buffer,
             }
         }
     }
+
+    // Trigger camera re-center in case of buffer size change.
+    if (is_size_updated)
+        recenter_camera();
 
     return true;
 }
@@ -282,4 +288,31 @@ void Stage::set_icon_drawing_mode(bool is_enabled)
         return;
 
     buffer_component->set_icon_drawing_mode(is_enabled);
+}
+
+const uint8_t* Stage::get_stub_buffer()
+{
+    const static uint8_t valueStub = 0;
+
+    return &valueStub;
+}
+
+bool Stage::recenter_camera() const
+{
+    const auto it_camera = all_game_objects.find("camera");
+    if (it_camera == all_game_objects.end())
+        return false;
+
+    const auto& map_components = it_camera->second->get_components();
+    const auto it_camera_component = map_components.find("camera_component");
+    if (it_camera_component == map_components.end())
+        return false;
+
+    const auto camera_shr_ptr = std::dynamic_pointer_cast<Camera>(it_camera_component->second);
+    if (!camera_shr_ptr)
+        return false;
+
+    camera_shr_ptr->recenter_camera();
+
+    return true;
 }

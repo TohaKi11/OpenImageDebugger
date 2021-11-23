@@ -41,12 +41,19 @@ void MainWindow::decode_set_available_symbols()
 
     Logger::instance()->info("Received available symbols: {}", available_vars_.join(", ").toStdString());
 
-    foreach (const auto& symbol_value, available_vars_) {
+    foreach (const auto& symbol_value_str, available_vars_) {
+
         // Plot buffer if it was available in the previous session
-        if (previous_session_buffers_.find(symbol_value.toStdString()) !=
-            previous_session_buffers_.end()) {
-            request_plot_buffer(symbol_value.toStdString().data());
-        }
+        const std::string symbol_value_stdstr = symbol_value_str.toStdString();
+        if (previous_session_buffers_.find(symbol_value_stdstr) == previous_session_buffers_.end())
+            continue;
+
+        request_plot_buffer(symbol_value_stdstr);
+
+        // Construct a new list widget if needed
+        QListWidgetItem* item = find_image_list_item(symbol_value_stdstr);
+        if (item == nullptr)
+            item = add_image_list_item(symbol_value_stdstr);
     }
 
     // Clean previous session buffers in order to request them only once at app startup.
@@ -84,6 +91,22 @@ void MainWindow::respond_get_observed_symbols()
 }
 
 
+QListWidgetItem* MainWindow::add_image_list_item(const std::string& variable_name_str)
+{
+    // Construct an icon stub.
+    const QPixmap buffer_pixmap = draw_image_list_icon_stub();
+
+    // Construct a new list widget item.
+    QListWidgetItem* item = new QListWidgetItem(buffer_pixmap, variable_name_str.c_str(), ui_->imageList);
+    item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
+    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                   Qt::ItemIsDragEnabled);
+    ui_->imageList->addItem(item);
+
+    return item;
+}
+
+
 QListWidgetItem* MainWindow::find_image_list_item(const std::string& variable_name_str)
 {
     // Looking for corresponding item...
@@ -95,39 +118,68 @@ QListWidgetItem* MainWindow::find_image_list_item(const std::string& variable_na
 
         return item;
     }
+
     return nullptr;
 }
 
 
-void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
+QPixmap MainWindow::draw_image_list_icon(const std::shared_ptr<Stage>& stage)
 {
-    auto itStage = stages_.find(variable_name_str);
-    if (itStage == stages_.end())
-        return;
-
-    const std::shared_ptr<Stage>& stage = itStage->second;
-
     // Buffer icon dimensions
-    QSizeF icon_size         = get_icon_size();
-    int icon_width           = static_cast<int>(icon_size.width());
-    int icon_height          = static_cast<int>(icon_size.height());
+    const QSizeF icon_size   = get_icon_size();
+    const int icon_width     = static_cast<int>(icon_size.width());
+    const int icon_height    = static_cast<int>(icon_size.height());
     const int bytes_per_line = icon_width * 3;
+
+    if (!stage)
+        return draw_image_list_icon_stub();
 
     // Update buffer icon
     ui_->bufferPreview->render_buffer_icon(
                 stage.get(), icon_width, icon_height);
 
     // Construct icon widget
-    QImage bufferIcon(stage->buffer_icon.data(),
-                      icon_width,
-                      icon_height,
-                      bytes_per_line,
-                      QImage::Format_RGB888);
+    QImage buffer_image_preview(stage->buffer_icon.data(),
+                              icon_width,
+                              icon_height,
+                              bytes_per_line,
+                              QImage::Format_RGB888);
+
+    return QPixmap::fromImage(buffer_image_preview);
+}
+
+
+QPixmap MainWindow::draw_image_list_icon_stub()
+{
+    // Buffer icon dimensions
+    const QSizeF icon_size   = get_icon_size();
+    const int icon_width     = static_cast<int>(icon_size.width());
+    const int icon_height    = static_cast<int>(icon_size.height());
+
+    // Construct stub pixmap.
+    QPixmap buffer_pixmap(icon_width, icon_height);
+    buffer_pixmap.fill(Qt::lightGray);
+    return buffer_pixmap;
+}
+
+
+void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
+{
+    QPixmap bufferPixmap;
+
+    // Try to find stage of a corresponding variable.
+    auto itStage = stages_.find(variable_name_str);
+    if (itStage != stages_.end())
+        bufferPixmap = draw_image_list_icon(itStage->second);
+    else
+        bufferPixmap = draw_image_list_icon_stub();
 
     // Replace icon in the corresponding item
     QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item != nullptr)
-        item->setIcon(QPixmap::fromImage(bufferIcon));
+    if (item == nullptr)
+        return;
+
+    item->setIcon(bufferPixmap);
 }
 
 
@@ -135,8 +187,10 @@ void MainWindow::update_image_list_label(const std::string& variable_name_str, c
 {
     // Replace text in the corresponding item
     QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item != nullptr)
-        item->setText(label_str.c_str());
+    if (item == nullptr)
+        return;
+
+    item->setText(label_str.c_str());
 }
 
 
@@ -203,44 +257,28 @@ void MainWindow::decode_plot_buffer_contents()
 
         // Construct a new stage buffer if needed
         shared_ptr<Stage> stage = make_shared<Stage>(this);
-        if (!stage->initialize(
-                    buff_ptr,
-                    buff_width,
-                    buff_height,
-                    buff_channels,
-                    buff_type,
-                    buff_stride,
-                    pixel_layout_str,
-                    transpose_buffer)) {
+        if (!stage->initialize()) {
             cerr << "[error] Could not initialize opengl canvas!" << endl;
         }
         stage->contrast_enabled    = ac_enabled_;
         buffer_stage = stages_.emplace(variable_name_str, stage).first;
     }
-    else {
 
-        // Update buffer data
-        buffer_stage->second->buffer_update(
-                    buff_ptr,
-                    buff_width,
-                    buff_height,
-                    buff_channels,
-                    buff_type,
-                    buff_stride,
-                    pixel_layout_str,
-                    transpose_buffer);
-    }
+    // Update buffer data
+    buffer_stage->second->buffer_update(
+                buff_ptr,
+                buff_width,
+                buff_height,
+                buff_channels,
+                buff_type,
+                buff_stride,
+                pixel_layout_str,
+                transpose_buffer);
 
     // Construct a new list widget if needed
     QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item == nullptr) {
-
-        item = new QListWidgetItem(label_str.c_str(), ui_->imageList);
-        item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-        item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                       Qt::ItemIsDragEnabled);
-        ui_->imageList->addItem(item);
-    }
+    if (item == nullptr)
+        item = add_image_list_item(variable_name_str);
 
     // Update icon and text of corresponding item in image list
     repaint_image_list_icon(variable_name_str);
@@ -297,12 +335,12 @@ void MainWindow::decode_incoming_messages()
 }
 
 
-void MainWindow::request_plot_buffer(const char* buffer_name)
+void MainWindow::request_plot_buffer(const std::string& buffer_name_str)
 {
     MessageComposer message_composer(&socket_);
     message_composer.push(MessageType::PlotBufferRequest)
-        .push(std::string(buffer_name))
+        .push(buffer_name_str)
         .send();
 
-    Logger::instance()->info("Sent request to provide symbol data: {}", buffer_name);
+    Logger::instance()->info("Sent request to provide symbol data: {}", buffer_name_str);
 }

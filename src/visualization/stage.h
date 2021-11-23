@@ -44,14 +44,7 @@ class Stage
 
     Stage(MainWindow* main_window);
 
-    bool initialize(const uint8_t* buffer,
-                    int buffer_width_i,
-                    int buffer_height_i,
-                    int channels,
-                    BufferType type,
-                    int step,
-                    const std::string& pixel_layout,
-                    bool transpose_buffer);
+    bool initialize();
 
     bool buffer_update(const uint8_t* buffer,
                        int buffer_width_i,
@@ -81,6 +74,11 @@ class Stage
     void go_to_pixel(float x, float y);
 
     void set_icon_drawing_mode(bool is_enabled);
+
+  private:
+    static const uint8_t* get_stub_buffer();
+
+    bool recenter_camera() const;
 
   private:
     std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;

@@ -155,7 +155,7 @@ public Q_SLOTS:
 
     void symbol_selected();
 
-    void symbol_completed(QString str);
+    void symbol_completed(QString symbol_name_str);
 
     void export_buffer();
 
@@ -236,14 +236,17 @@ public Q_SLOTS:
 
     void respond_get_observed_symbols();
 
+    QListWidgetItem* add_image_list_item(const std::string& variable_name_str);
     QListWidgetItem* find_image_list_item(const std::string& variable_name_str);
+    QPixmap draw_image_list_icon(const std::shared_ptr<Stage>& stage);
+    QPixmap draw_image_list_icon_stub();
     void repaint_image_list_icon(const std::string& variable_name_str);
     void update_image_list_label(const std::string& variable_name_str, const std::string& label_str);
     void decode_plot_buffer_contents();
 
     void decode_incoming_messages();
 
-    void request_plot_buffer(const char* buffer_name);
+    void request_plot_buffer(const std::string& buffer_name_str);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp

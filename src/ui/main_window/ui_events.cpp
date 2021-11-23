@@ -262,25 +262,27 @@ void MainWindow::remove_selected_buffer()
 
 void MainWindow::symbol_selected()
 {
-    QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
-    const char* symbol_name    = symbol_name_qba.constData();
-    if (ui_->symbolList->text().length() > 0) {
-        request_plot_buffer(symbol_name);
-        // Clear symbol input
-        ui_->symbolList->setText("");
-    }
+    symbol_completed(ui_->symbolList->text());
 }
 
 
-void MainWindow::symbol_completed(QString str)
+void MainWindow::symbol_completed(QString symbol_name_str)
 {
-    if (str.length() > 0) {
-        QByteArray symbol_name_qba = str.toLocal8Bit();
-        request_plot_buffer(symbol_name_qba.constData());
-        // Clear symbol input
-        ui_->symbolList->setText("");
-        ui_->symbolList->clearFocus();
-    }
+    const std::string symbol_name_stdstr = symbol_name_str.toStdString();
+    if (symbol_name_stdstr.empty())
+        return;
+
+    // Request buffer data from debugger bridge
+    request_plot_buffer(symbol_name_stdstr);
+
+    // Clear symbol input
+    ui_->symbolList->setText("");
+    ui_->symbolList->clearFocus();
+
+    // Construct a new list widget if needed
+    QListWidgetItem* item = find_image_list_item(symbol_name_stdstr);
+    if (item == nullptr)
+        item = add_image_list_item(symbol_name_stdstr);
 }
 
 
@@ -319,22 +321,27 @@ void MainWindow::export_buffer()
     file_dialog.setNameFilter(save_message);
     file_dialog.selectNameFilter(default_export_suffix_);
 
-    if (file_dialog.exec() == QDialog::Accepted) {
-        string file_name = file_dialog.selectedFiles()[0].toStdString();
-        const auto selected_filter = file_dialog.selectedNameFilter();
+    if (file_dialog.exec() != QDialog::Accepted)
+        return;
 
-        // Export buffer
-        BufferExporter::export_buffer(
-            component,
-            file_name,
-            output_extensions[selected_filter]);
+    const QStringList list_selected_files = file_dialog.selectedFiles();
+    if (list_selected_files.isEmpty())
+        return;
 
-        // Update default export suffix to the previously used suffix
-        default_export_suffix_ = selected_filter;
+    const string file_name = list_selected_files.front().toStdString();
+    const auto selected_filter = file_dialog.selectedNameFilter();
 
-        // Persist settings
-        persist_settings_deferred();
-    }
+    // Export buffer
+    BufferExporter::export_buffer(
+                component,
+                file_name,
+                output_extensions[selected_filter]);
+
+    // Update default export suffix to the previously used suffix
+    default_export_suffix_ = selected_filter;
+
+    // Persist settings
+    persist_settings_deferred();
 }
 
 
