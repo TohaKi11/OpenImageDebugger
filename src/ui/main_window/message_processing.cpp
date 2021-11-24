@@ -285,7 +285,10 @@ void MainWindow::decode_plot_buffer_contents()
         buffer_selected(item);
 
     // Update icon and text of corresponding item in image list
-    repaint_image_list_icon(variable_name_str);
+    // TODO: Icon painting works incorrectly for small matrices.
+    // Whole app window remains painted with the matrix colors.
+    if ((buff_width * buff_height) > 100)
+        repaint_image_list_icon(variable_name_str);
     update_image_list_label(variable_name_str, label_str);
 
     // Update AC values
