@@ -283,6 +283,7 @@ public Q_SLOTS:
     void initialize_settings_ui_colorspace(QSettings& settings);
     void initialize_settings_ui_minmax_visible(QSettings& settings);
     void initialize_settings_ui_contrast_enabled(QSettings& settings);
+    void initialize_settings_ui_tab(QSettings& settings);
     void initialize_settings_ui(QSettings& settings);
     void initialize_settings();
 

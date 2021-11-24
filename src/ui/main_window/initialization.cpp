@@ -167,6 +167,19 @@ void MainWindow::initialize_settings_ui_contrast_enabled(QSettings& settings)
     ui_->minMaxEditor->setEnabled(ac_enabled_);
 }
 
+void MainWindow::initialize_settings_ui_tab(QSettings& settings)
+{
+    const QVariant variant = settings.value("tab");
+    if (!variant.canConvert(QVariant::Type::Int))
+        return;
+
+    const int index_tab = variant.toInt();
+    if (index_tab < 0 || index_tab >= ui_->tabWidget->count())
+        return;
+
+    ui_->tabWidget->setCurrentIndex(index_tab);
+}
+
 void MainWindow::initialize_settings_ui(QSettings& settings)
 {
     settings.beginGroup("UI");
@@ -177,6 +190,9 @@ void MainWindow::initialize_settings_ui(QSettings& settings)
     initialize_settings_ui_colorspace(settings);
     initialize_settings_ui_minmax_visible(settings);
     initialize_settings_ui_contrast_enabled(settings);
+    initialize_settings_ui_tab(settings);
+
+    settings.setValue("tab", ui_->tabWidget->currentIndex());
 
     settings.endGroup();
 }

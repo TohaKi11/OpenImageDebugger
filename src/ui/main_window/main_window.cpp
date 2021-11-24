@@ -222,6 +222,7 @@ void MainWindow::persist_settings()
     }
     settings.setValue("minmax_visible", ui_->acEdit->isChecked());
     settings.setValue("contrast_enabled", ui_->acToggle->isChecked());
+    settings.setValue("tab", ui_->tabWidget->currentIndex());
     settings.endGroup();
 
     // Write window position/size

@@ -258,9 +258,12 @@ void MainWindow::image_list_tab_selected()
         }
     }
 
-    // If no items are selected - close preview.
+    // If no items are selected - close preview
     if (!is_item_selected)
         image_list_item_selected(nullptr);
+
+    // Update settings
+    persist_settings_deferred();
 }
 
 
