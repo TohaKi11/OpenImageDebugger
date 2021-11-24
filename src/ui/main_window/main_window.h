@@ -167,6 +167,7 @@ public Q_SLOTS:
     void symbol_completed(QString symbol_name_str);
 
     void remove_watch_list_item_action();
+    void reload_buffer_action();
     void export_buffer_action();
 
     void show_context_menu(ListType type, const QPoint& pos);

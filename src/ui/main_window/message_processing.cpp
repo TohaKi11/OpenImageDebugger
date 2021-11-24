@@ -164,7 +164,7 @@ void MainWindow::respond_get_observed_symbols()
 {
     Logger::instance()->info("Received request to provide observed symbols");
 
-    // Reset text and icon of list item to visualize that they are loading.
+    // Reset text and icon of all lists items to visualize that they are loading.
     reset_image_lists_data();
 
     // Prepare a list of observable variables.

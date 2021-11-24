@@ -312,17 +312,24 @@ void MainWindow::symbol_completed(QString symbol_name_str)
     if (symbol_name_stdstr.empty())
         return;
 
-    // Request buffer data from debugger bridge
-    request_plot_buffer(symbol_name_stdstr);
-
     // Clear symbol input
     ui_->symbolList->setText("");
-    ui_->symbolList->clearFocus();
 
-    // Construct a new list item if needed
+    // Check that there are no such item in watch list yet
     QListWidgetItem* item = find_image_list_item(ListType::Watch, symbol_name_stdstr);
-    if (item == nullptr)
-        item = add_image_list_item(ListType::Watch, symbol_name_stdstr);
+    if (item != nullptr) {
+
+        // Select newly created item.
+        item->listWidget()->setFocus();
+        item->listWidget()->setCurrentItem(item);
+        return;
+    }
+
+    // Construct a new watch list item
+    item = add_image_list_item(ListType::Watch, symbol_name_stdstr);
+
+    // Request buffer data from debugger bridge
+    request_plot_buffer(symbol_name_stdstr);
 
     // Select newly created item.
     item->listWidget()->setFocus();
@@ -341,6 +348,44 @@ void MainWindow::remove_watch_list_item_action()
         return;
 
     remove_image_list_item(ListType::Watch, symbol_name_str);
+}
+
+
+void MainWindow::reload_buffer_action()
+{
+    auto sender_action = qobject_cast<QAction*>(sender());
+    if (sender_action == nullptr)
+        return;
+
+    const QString symbol_name_str = sender_action->data().toString();
+    const std::string symbol_name_stdstr = symbol_name_str.toStdString();
+    if (symbol_name_stdstr.empty())
+        return;
+
+    // Reset text and icon of list item to visualize that it is loading.
+    foreach (ListType list_type, get_all_list_types()) {
+
+        QListWidget* list_widget = get_list_widget(list_type);
+        if (list_widget == nullptr)
+            continue;
+
+        for (int index_item = 0; index_item < list_widget->count(); ++index_item) {
+
+            QListWidgetItem* item = list_widget->item(index_item);
+            if (item == nullptr)
+                continue;
+
+            const QString current_symbol_name_str = item->data(Qt::UserRole).toString();
+            if (current_symbol_name_str != symbol_name_str)
+                continue;
+
+            item->setText(symbol_name_str);
+            item->setIcon(draw_image_list_icon_stub());
+        }
+    }
+
+    // Request buffer data from debugger bridge
+    request_plot_buffer(symbol_name_stdstr);
 }
 
 
@@ -438,6 +483,9 @@ void MainWindow::show_context_menu(ListType type, const QPoint& pos)
         QAction* removeAction = myMenu.addAction("Remove", this, &MainWindow::remove_watch_list_item_action);
         removeAction->setData(symbol_name_str);
     }
+
+    QAction* reloadAction = myMenu.addAction("Reload buffer", this, &MainWindow::reload_buffer_action);
+    reloadAction->setData(symbol_name_str);
 
     QAction* exportAction = myMenu.addAction("Export buffer", this, &MainWindow::export_buffer_action);
     exportAction->setData(symbol_name_str);
