@@ -56,6 +56,7 @@ void MessageComposer::send() const
         } while (offset < static_cast<qint64>(block->size()));
     }
 
+    socket_->flush();
     socket_->waitForBytesWritten();
 }
 
