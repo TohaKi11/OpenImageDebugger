@@ -19,12 +19,21 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
 
     def _set_symbol_complete_list(self):
         """
-        Retrieve the list of available symbols and provide it to the OID window
-        for autocompleting.
+        1. Retrieve the list of available symbols from debugger.
+        2. Provide it to the OID window. OID will choose which symbols to observe.
         """
         observable_symbols = list(self._debugger.get_available_symbols())
         if self._window.is_ready():
             self._window.set_available_symbols(observable_symbols)
+
+    def _plot_observed_symbols(self):
+        """
+        1. Retrieve the list of observable symbols from OID window.
+        2. Request debugger to plot each of those symbols.
+        """
+        observed_buffers = self._window.get_observed_buffers()
+        for buffer_name in observed_buffers:
+            self._window.plot_variable(buffer_name)
 
     def exit_handler(self):
         self._window.terminate()
@@ -42,13 +51,11 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
 
         self._window.log_message('info', 'The debugger has stopped on a breakpoint')
 
-        # Update buffers being visualized
-        observed_buffers = self._window.get_observed_buffers()
-        for buffer_name in observed_buffers:
-            self._window.plot_variable(buffer_name)
-
         # Set list of available symbols
         self._set_symbol_complete_list()
+
+        # Update buffers being visualized
+        self._plot_observed_symbols()
 
     def plot_handler(self, variable_name):
         """

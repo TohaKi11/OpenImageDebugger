@@ -206,27 +206,6 @@ class OidBridge
         Logger::instance()->log(level, message_str);
     }
 
-    deque<string> get_observed_symbols()
-    {
-        assert(client_ != nullptr);
-
-        MessageComposer message_composer(client_);
-        message_composer.push(MessageType::GetObservedSymbols)
-                .send();
-
-        Logger::instance()->info("Sent request to provide observed symbols");
-
-        auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
-        if (response != nullptr) {
-            return static_cast<GetObservedSymbolsResponseMessage*>(
-                       response.get())
-                ->observed_symbols;
-        } else {
-            return {};
-        }
-    }
-
-
     void set_available_symbols(const deque<string>& available_vars)
     {
         assert(client_ != nullptr);
@@ -252,17 +231,23 @@ class OidBridge
         }
     }
 
-    void run_event_loop()
+    deque<string> get_observed_symbols()
     {
-        try_read_incoming_messages(static_cast<int>(1000.0 / 5.0));
+        assert(client_ != nullptr);
 
-        unique_ptr<UiMessage> plot_request_message;
-        while ((plot_request_message = try_get_stored_message(
-                    MessageType::PlotBufferRequest)) != nullptr) {
-            const PlotBufferRequestMessage* msg =
-                dynamic_cast<PlotBufferRequestMessage*>(
-                    plot_request_message.get());
-            plot_callback_(msg->buffer_name.c_str());
+        MessageComposer message_composer(client_);
+        message_composer.push(MessageType::GetObservedSymbols)
+                .send();
+
+        Logger::instance()->info("Sent request to provide observed symbols");
+
+        auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
+        if (response != nullptr) {
+            return static_cast<GetObservedSymbolsResponseMessage*>(
+                       response.get())
+                ->observed_symbols;
+        } else {
+            return {};
         }
     }
 
@@ -293,6 +278,20 @@ class OidBridge
             .send();
 
         Logger::instance()->info("Sent symbol data: {}", display_name_str);
+    }
+
+    void run_event_loop()
+    {
+        try_read_incoming_messages(static_cast<int>(1000.0 / 5.0));
+
+        unique_ptr<UiMessage> plot_request_message;
+        while ((plot_request_message = try_get_stored_message(
+                    MessageType::PlotBufferRequest)) != nullptr) {
+            const PlotBufferRequestMessage* msg =
+                dynamic_cast<PlotBufferRequestMessage*>(
+                    plot_request_message.get());
+            plot_callback_(msg->buffer_name.c_str());
+        }
     }
 
     ~OidBridge()

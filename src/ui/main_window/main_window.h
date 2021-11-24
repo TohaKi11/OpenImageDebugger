@@ -61,6 +61,12 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+    enum class ListType {
+
+        Locals,
+        Watch
+    };
+
   public:
     ///
     // Constructor / destructor
@@ -151,17 +157,18 @@ public Q_SLOTS:
 
     void buffer_selected(QListWidgetItem* item);
 
-    void remove_specific_buffer(const std::string& symbol_name_str);
-    void remove_selected_buffer();
+    void remove_selected_watch_list_item();
 
     void symbol_selected();
 
     void symbol_completed(QString symbol_name_str);
 
-    void remove_buffer_action();
+    void remove_watch_list_item_action();
     void export_buffer_action();
 
-    void show_context_menu(const QPoint& pos);
+    void show_context_menu(ListType type, const QPoint& pos);
+    void show_context_menu_locals(const QPoint& pos);
+    void show_context_menu_watch(const QPoint& pos);
 
     void toggle_go_to_dialog();
 
@@ -196,9 +203,6 @@ public Q_SLOTS:
     std::map<std::string, std::vector<uint8_t>> held_buffers_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
 
-    std::set<std::string> previous_session_buffers_;
-    std::set<std::string> removed_buffer_names_;
-
     QStringList available_vars_;
 
     std::mutex ui_mutex_;
@@ -232,19 +236,27 @@ public Q_SLOTS:
 
     std::pair<int, int> get_stage_coordinates(float pos_window_x, float pos_window_y);
 
-    ///
-    // Communication with debugger bridge
-    void decode_set_available_symbols();
+    QListWidget* get_list_widget(ListType type);
+    QString get_list_name(ListType type);
+    QList<ListType> get_all_list_types();
 
-    void respond_get_observed_symbols();
-
-    QListWidgetItem* add_image_list_item(const std::string& variable_name_str);
-    QListWidgetItem* find_image_list_item(const std::string& variable_name_str);
+    QListWidgetItem* add_image_list_item(ListType type, const std::string& variable_name_str);
+    void remove_image_list_item(ListType type, const std::string& symbol_name_str);
+    QListWidgetItem* find_image_list_item(ListType type, const std::string& variable_name_str);
+    bool is_list_item_exists(const std::string& variable_name_str);
     QPixmap draw_image_list_icon(const std::shared_ptr<Stage>& stage);
     QPixmap draw_image_list_icon_stub();
     void repaint_image_list_icon(const std::string& variable_name_str);
     void update_image_list_label(const std::string& variable_name_str, const std::string& label_str);
     void decode_plot_buffer_contents();
+
+    ///
+    // Communication with debugger bridge
+    void add_new_local_symbols();
+    void remove_old_local_symbols();
+    void decode_set_available_symbols();
+
+    void respond_get_observed_symbols();
 
     void decode_incoming_messages();
 

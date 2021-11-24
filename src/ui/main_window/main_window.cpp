@@ -36,6 +36,7 @@
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
+#include "logger/logger.h"
 
 
 using namespace std;
@@ -173,41 +174,21 @@ void MainWindow::persist_settings_previous_session(QSettings& settings)
 {
     settings.beginGroup("PreviousSession");
 
-    using BufferExpiration = QPair<QString, QDateTime>;
+    QStringList persisted_session_buffers;
+    for (int index_item = 0; index_item < ui_->imageList_watch->count(); ++index_item) {
 
-    QList<BufferExpiration> persisted_session_buffers;
+        QListWidgetItem* item = ui_->imageList_watch->item(index_item);
+        if (item == nullptr)
+            continue;
 
-    // Load previous session symbols
-    QList<BufferExpiration> previous_session_buffers_qlist =
-        settings.value("PreviousSession/buffers")
-            .value<QList<BufferExpiration>>();
+        const QString symbol_value_item_str = item->data(Qt::UserRole).toString();
+        if (symbol_value_item_str.isEmpty())
+            continue;
 
-    QDateTime now             = QDateTime::currentDateTime();
-    QDateTime next_expiration = now.addDays(1);
-
-    // Of the buffers not currently being visualized, only keep those whose
-    // timer hasn't expired yet and is not in the set of removed names
-    foreach (const auto& prev_buff, previous_session_buffers_qlist) {
-        const string buff_name_std_str = prev_buff.first.toStdString();
-
-        const bool being_viewed =
-            held_buffers_.find(buff_name_std_str) != held_buffers_.end();
-        const bool was_removed =
-            removed_buffer_names_.find(buff_name_std_str) !=
-            removed_buffer_names_.end();
-
-        if (!being_viewed && !was_removed && prev_buff.second >= now) {
-            persisted_session_buffers.append(prev_buff);
-        }
+        persisted_session_buffers.append(symbol_value_item_str);
     }
 
-    for (const auto& held_buffer : held_buffers_) {
-        persisted_session_buffers.append(
-            BufferExpiration(held_buffer.first.c_str(), next_expiration));
-    }
-
-    settings.setValue("buffers",
-                      QVariant::fromValue(persisted_session_buffers));
+    settings.setValue("buffers", persisted_session_buffers);
 
     settings.endGroup();
 }
@@ -250,8 +231,6 @@ void MainWindow::persist_settings()
     settings.endGroup();
 
     settings.sync();
-
-    removed_buffer_names_.clear();
 }
 
 
@@ -285,6 +264,44 @@ std::pair<int, int> MainWindow::get_stage_coordinates(float pos_window_x, float 
                 static_cast<int>(floor(mouse_pos.x())),
                 static_cast<int>(floor(mouse_pos.y()))
                 );
+}
+
+
+QListWidget* MainWindow::get_list_widget(ListType type)
+{
+    switch (type) {
+
+    case ListType::Locals:
+        return ui_->imageList_locals;
+    case ListType::Watch:
+        return ui_->imageList_watch;
+    default:
+        return nullptr;
+    }
+}
+
+
+QString MainWindow::get_list_name(ListType type)
+{
+    switch (type) {
+
+    case ListType::Locals:
+        return "Locals";
+    case ListType::Watch:
+        return "Watch";
+    default:
+        return "Undefined";
+    }
+}
+
+
+auto MainWindow::get_all_list_types() -> QList<ListType>
+{
+    return {
+
+        ListType::Locals,
+        ListType::Watch
+    };
 }
 
 
@@ -364,4 +381,175 @@ void MainWindow::set_currently_selected_stage(Stage* stage)
 {
     currently_selected_stage_ = stage;
     request_render_update_    = true;
+}
+
+
+QListWidgetItem* MainWindow::add_image_list_item(ListType type, const std::string& variable_name_str)
+{
+    QListWidget* list_widget = get_list_widget(type);
+    if (list_widget == nullptr)
+        return nullptr;
+
+    // Construct an icon stub.
+    const QPixmap buffer_pixmap = draw_image_list_icon_stub();
+
+    // Construct a new list widget item.
+    QListWidgetItem* item = new QListWidgetItem(buffer_pixmap, variable_name_str.c_str(), list_widget);
+    item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
+    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                   Qt::ItemIsDragEnabled);
+    list_widget->addItem(item);
+
+    Logger::instance()->info("Added symbol {} to the {} list", variable_name_str, get_list_name(type).toStdString());
+
+    // Update previous session settings in case of a watch list item adding.
+    if (type == ListType::Watch)
+        persist_settings_deferred();
+
+    return item;
+}
+
+
+void MainWindow::remove_image_list_item(ListType type, const std::string& symbol_name_str)
+{
+    if (symbol_name_str.empty())
+        return;
+
+    // Remove item from selected list.
+    QListWidgetItem* item = find_image_list_item(type, symbol_name_str);
+    if (item != nullptr)
+        delete item;
+
+    Logger::instance()->info("Removed symbol {} from the {} list", symbol_name_str, get_list_name(type).toStdString());
+
+    // Remove stage object if there no other links to the buffer in any list.
+    if (is_list_item_exists(symbol_name_str)) {
+
+        stages_.erase(symbol_name_str);
+        held_buffers_.erase(symbol_name_str);
+    }
+
+    // It this was the last item in the list.
+    if (get_list_widget(type)->count() == 0 || stages_.size() == 0)
+        set_currently_selected_stage(nullptr);
+
+    // Update previous session settings in case of a watch list item deletion.
+    if (type == ListType::Watch)
+        persist_settings_deferred();
+}
+
+
+QListWidgetItem* MainWindow::find_image_list_item(ListType type, const std::string& variable_name_str)
+{
+    QListWidget* list_widget = get_list_widget(type);
+    if (list_widget == nullptr)
+        return nullptr;
+
+    // Looking for corresponding item...
+    for (int i = 0; i < list_widget->count(); ++i) {
+
+        QListWidgetItem* item = list_widget->item(i);
+        if (item == nullptr)
+            continue;
+
+        const string current_variable_name_str = item->data(Qt::UserRole).toString().toStdString();
+        if (current_variable_name_str.empty())
+            continue;
+
+        if (current_variable_name_str != variable_name_str)
+            continue;
+
+        return item;
+    }
+
+    return nullptr;
+}
+
+
+bool MainWindow::is_list_item_exists(const std::string& variable_name_str)
+{
+    foreach (ListType type, get_all_list_types()) {
+
+        if (find_image_list_item(type, variable_name_str) != nullptr)
+            return true;
+    }
+
+    return false;
+}
+
+
+QPixmap MainWindow::draw_image_list_icon(const std::shared_ptr<Stage>& stage)
+{
+    // Buffer icon dimensions
+    const QSizeF icon_size   = get_icon_size();
+    const int icon_width     = static_cast<int>(icon_size.width());
+    const int icon_height    = static_cast<int>(icon_size.height());
+    const int bytes_per_line = icon_width * 3;
+
+    if (!stage)
+        return draw_image_list_icon_stub();
+
+    // Update buffer icon
+    ui_->bufferPreview->render_buffer_icon(
+                stage.get(), icon_width, icon_height);
+
+    // Construct icon widget
+    QImage buffer_image_preview(stage->buffer_icon.data(),
+                              icon_width,
+                              icon_height,
+                              bytes_per_line,
+                              QImage::Format_RGB888);
+
+    return QPixmap::fromImage(buffer_image_preview);
+}
+
+
+QPixmap MainWindow::draw_image_list_icon_stub()
+{
+    // Buffer icon dimensions
+    const QSizeF icon_size   = get_icon_size();
+    const int icon_width     = static_cast<int>(icon_size.width());
+    const int icon_height    = static_cast<int>(icon_size.height());
+
+    // Construct stub pixmap.
+    QPixmap buffer_pixmap(icon_width, icon_height);
+    buffer_pixmap.fill(Qt::lightGray);
+    return buffer_pixmap;
+}
+
+
+void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
+{
+    QPixmap bufferPixmap;
+
+    // Try to find stage of a corresponding variable.
+    auto itStage = stages_.find(variable_name_str);
+    if (itStage != stages_.end())
+        bufferPixmap = draw_image_list_icon(itStage->second);
+    else
+        bufferPixmap = draw_image_list_icon_stub();
+
+    // Replace icon in the corresponding item
+    foreach (ListType list_type, get_all_list_types()) {
+
+        QListWidgetItem* item = find_image_list_item(list_type, variable_name_str);
+        if (item == nullptr)
+            continue;
+
+        item->setIcon(bufferPixmap);
+    }
+}
+
+
+void MainWindow::update_image_list_label(const std::string& variable_name_str, const std::string& label_str)
+{
+    // Replace text in the corresponding item
+    foreach (ListType list_type, get_all_list_types()) {
+
+        QListWidgetItem* item = find_image_list_item(list_type, variable_name_str);
+        if (item == nullptr)
+            continue;
+
+        item->setText(label_str.c_str());
+    }
 }

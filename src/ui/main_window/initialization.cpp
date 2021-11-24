@@ -183,11 +183,6 @@ void MainWindow::initialize_settings_ui(QSettings& settings)
 
 void MainWindow::initialize_settings()
 {
-    using BufferExpiration = QPair<QString, QDateTime>;
-
-    qRegisterMetaTypeStreamOperators<QList<BufferExpiration>>(
-        "QList<QPair<QString, QDateTime>>");
-
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
                        "OpenImageDebugger");
@@ -213,17 +208,17 @@ void MainWindow::initialize_settings()
 
 #if !defined(IS_DEVELOPMENT)
     // Load previous session symbols (don't do that in case of OID development).
-    QDateTime now = QDateTime::currentDateTime();
-    QList<BufferExpiration> previous_buffers =
-        settings.value("PreviousSession/buffers")
-            .value<QList<BufferExpiration>>();
+    settings.beginGroup("PreviousSession");
+    QStringList previous_buffers = settings.value("buffers").toStringList();
+    foreach (const QString& previous_buffer_str, previous_buffers) {
 
-    foreach (const auto& previous_buffer, previous_buffers) {
-        if (previous_buffer.second >= now) {
-            previous_session_buffers_.insert(
-                previous_buffer.first.toStdString());
-        }
+        const std::string symbol_value_stdstr = previous_buffer_str.toStdString();
+
+        // Construct a new item in watch list
+        if (find_image_list_item(ListType::Watch, symbol_value_stdstr) == nullptr)
+            add_image_list_item(ListType::Watch, symbol_value_stdstr);
     }
+    settings.endGroup();
 #endif
 
 
@@ -342,22 +337,18 @@ void MainWindow::initialize_timers()
 
 void MainWindow::initialize_shortcuts()
 {
-    QShortcut* symbol_list_focus_shortcut_ =
-        new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
+    QShortcut* symbol_list_focus_shortcut_ = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
     connect(symbol_list_focus_shortcut_,
             SIGNAL(activated()),
             ui_->symbolList,
             SLOT(setFocus()));
 
-    QShortcut* buffer_removal_shortcut_ =
-        new QShortcut(QKeySequence(Qt::Key_Delete, Qt::Key_Backspace), ui_->imageList_watch);
-    connect(buffer_removal_shortcut_,
-            SIGNAL(activated()),
-            this,
-            SLOT(remove_selected_buffer()));
+    QShortcut* watch_buffer_removal_shortcut_a_ = new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList_watch);
+    QShortcut* watch_buffer_removal_shortcut_b_ = new QShortcut(QKeySequence(Qt::Key_Backspace), ui_->imageList_watch);
+    connect(watch_buffer_removal_shortcut_a_, &QShortcut::activated, this, &MainWindow::remove_selected_watch_list_item);
+    connect(watch_buffer_removal_shortcut_b_, &QShortcut::activated, this, &MainWindow::remove_selected_watch_list_item);
 
-    QShortcut* go_to_shortcut =
-        new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
+    QShortcut* go_to_shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
     connect(
         go_to_shortcut, SIGNAL(activated()), this, SLOT(toggle_go_to_dialog()));
     connect(go_to_widget_,
@@ -396,6 +387,11 @@ void MainWindow::initialize_symbol_completer()
 
 void MainWindow::initialize_left_pane()
 {
+    connect(ui_->imageList_locals,
+            SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
+            this,
+            SLOT(buffer_selected(QListWidgetItem*)));
+
     connect(ui_->imageList_watch,
             SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
             this,
@@ -406,11 +402,17 @@ void MainWindow::initialize_left_pane()
             this,
             SLOT(symbol_selected()));
 
+    ui_->imageList_locals->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui_->imageList_locals,
+            SIGNAL(customContextMenuRequested(const QPoint&)),
+            this,
+            SLOT(show_context_menu_locals(const QPoint&)));
+
     ui_->imageList_watch->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui_->imageList_watch,
             SIGNAL(customContextMenuRequested(const QPoint&)),
             this,
-            SLOT(show_context_menu(const QPoint&)));
+            SLOT(show_context_menu_watch(const QPoint&)));
 }
 
 

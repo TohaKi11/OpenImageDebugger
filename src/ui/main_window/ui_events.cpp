@@ -31,6 +31,7 @@
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
+#include "logger/logger.h"
 
 
 using namespace std;
@@ -226,7 +227,11 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
     if (item == nullptr)
         return;
 
-    auto stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
+    const string symbol_name_str = item->data(Qt::UserRole).toString().toStdString();
+    if (symbol_name_str.empty())
+        return;
+
+    auto stage = stages_.find(symbol_name_str);
     if (stage != stages_.end())
         set_currently_selected_stage(stage->second.get());
     else
@@ -239,29 +244,7 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 }
 
 
-void MainWindow::remove_specific_buffer(const std::string& symbol_name_str)
-{
-    if (symbol_name_str.empty())
-        return;
-
-    QListWidgetItem* item = find_image_list_item(symbol_name_str);
-    if (item != nullptr)
-        delete item;
-
-    stages_.erase(symbol_name_str);
-    held_buffers_.erase(symbol_name_str);
-
-    removed_buffer_names_.insert(symbol_name_str);
-
-    if (stages_.size() == 0) {
-        set_currently_selected_stage(nullptr);
-    }
-
-    persist_settings_deferred();
-}
-
-
-void MainWindow::remove_selected_buffer()
+void MainWindow::remove_selected_watch_list_item()
 {
     QListWidgetItem* item = ui_->imageList_watch->currentItem();
     if (item == nullptr)
@@ -271,7 +254,7 @@ void MainWindow::remove_selected_buffer()
     if (symbol_name_str.empty())
         return;
 
-    remove_specific_buffer(symbol_name_str);
+    remove_image_list_item(ListType::Watch, symbol_name_str);
 }
 
 
@@ -295,9 +278,9 @@ void MainWindow::symbol_completed(QString symbol_name_str)
     ui_->symbolList->clearFocus();
 
     // Construct a new list item if needed
-    QListWidgetItem* item = find_image_list_item(symbol_name_stdstr);
+    QListWidgetItem* item = find_image_list_item(ListType::Watch, symbol_name_stdstr);
     if (item == nullptr)
-        item = add_image_list_item(symbol_name_stdstr);
+        item = add_image_list_item(ListType::Watch, symbol_name_stdstr);
 
     // Select newly created item.
     item->listWidget()->setFocus();
@@ -305,7 +288,7 @@ void MainWindow::symbol_completed(QString symbol_name_str)
 }
 
 
-void MainWindow::remove_buffer_action()
+void MainWindow::remove_watch_list_item_action()
 {
     auto sender_action = qobject_cast<QAction*>(sender());
     if (sender_action == nullptr)
@@ -315,7 +298,7 @@ void MainWindow::remove_buffer_action()
     if (symbol_name_str.empty())
         return;
 
-    remove_specific_buffer(symbol_name_str);
+    remove_image_list_item(ListType::Watch, symbol_name_str);
 }
 
 
@@ -389,10 +372,14 @@ void MainWindow::export_buffer_action()
 }
 
 
-void MainWindow::show_context_menu(const QPoint& pos)
+void MainWindow::show_context_menu(ListType type, const QPoint& pos)
 {
+    QListWidget* list_widget = get_list_widget(type);
+    if (list_widget == nullptr)
+        return;
+
     // Get item at desired position.
-    QListWidgetItem* item = ui_->imageList_watch->itemAt(pos);
+    QListWidgetItem* item = list_widget->itemAt(pos);
     if (item == nullptr)
         return;
 
@@ -404,15 +391,30 @@ void MainWindow::show_context_menu(const QPoint& pos)
     // Create menu and insert context actions
     QMenu myMenu(this);
 
-    QAction* removeAction = myMenu.addAction("Remove", this, SLOT(remove_buffer_action()));
-    removeAction->setData(symbol_name_str);
+    if (type == ListType::Watch) {
 
-    QAction* exportAction = myMenu.addAction("Export buffer", this, SLOT(export_buffer_action()()));
+        QAction* removeAction = myMenu.addAction("Remove", this, &MainWindow::remove_watch_list_item_action);
+        removeAction->setData(symbol_name_str);
+    }
+
+    QAction* exportAction = myMenu.addAction("Export buffer", this, &MainWindow::export_buffer_action);
     exportAction->setData(symbol_name_str);
 
     // Show context menu at handling position
     QPoint globalPos = ui_->imageList_watch->mapToGlobal(pos);
     myMenu.exec(globalPos);
+}
+
+
+void MainWindow::show_context_menu_locals(const QPoint& pos)
+{
+    show_context_menu(ListType::Locals, pos);
+}
+
+
+void MainWindow::show_context_menu_watch(const QPoint& pos)
+{
+    show_context_menu(ListType::Watch, pos);
 }
 
 

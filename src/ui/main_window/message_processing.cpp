@@ -33,6 +33,55 @@
 using namespace std;
 
 
+void MainWindow::add_new_local_symbols()
+{
+    foreach (const auto& symbol_value_str, available_vars_) {
+
+        const std::string symbol_value_stdstr = symbol_value_str.toStdString();
+        const bool symbol_contains_dot = symbol_value_str.contains('.');
+        const bool symbol_contains_arrow = symbol_value_str.contains("->");
+        const bool is_local_symbol = !(symbol_contains_dot || symbol_contains_arrow);
+
+        if (!is_local_symbol)
+            continue;
+
+        // Construct a new item in locals list
+        if (find_image_list_item(ListType::Locals, symbol_value_stdstr) == nullptr)
+            add_image_list_item(ListType::Locals, symbol_value_stdstr);
+    }
+}
+
+
+void MainWindow::remove_old_local_symbols()
+{
+    QStringList unavailable_local_vars;
+    for (int index_item = 0; index_item < ui_->imageList_locals->count(); ++index_item) {
+
+        QListWidgetItem* item = ui_->imageList_locals->item(index_item);
+        if (item == nullptr)
+            continue;
+
+        const QString symbol_value_item_str = item->data(Qt::UserRole).toString();
+
+        bool is_available = false;
+        foreach (const auto& symbol_value_available_str, available_vars_) {
+
+            if (symbol_value_item_str != symbol_value_available_str)
+                continue;
+
+            is_available = true;
+            break;
+        }
+
+        if (!is_available)
+            unavailable_local_vars.append(symbol_value_item_str);
+    }
+
+    foreach(const QString& symbol_value_str, unavailable_local_vars)
+        remove_image_list_item(ListType::Locals, symbol_value_str.toStdString());
+}
+
+
 void MainWindow::decode_set_available_symbols()
 {
     std::unique_lock<std::mutex> lock(ui_mutex_);
@@ -41,23 +90,11 @@ void MainWindow::decode_set_available_symbols()
 
     Logger::instance()->info("Received available symbols: {}", available_vars_.join(", ").toStdString());
 
-    foreach (const auto& symbol_value_str, available_vars_) {
+    // Add new local available items to the locals list.
+    add_new_local_symbols();
 
-        // Plot buffer if it was available in the previous session
-        const std::string symbol_value_stdstr = symbol_value_str.toStdString();
-        if (previous_session_buffers_.find(symbol_value_stdstr) == previous_session_buffers_.end())
-            continue;
-
-        request_plot_buffer(symbol_value_stdstr);
-
-        // Construct a new list widget if needed
-        QListWidgetItem* item = find_image_list_item(symbol_value_stdstr);
-        if (item == nullptr)
-            item = add_image_list_item(symbol_value_stdstr);
-    }
-
-    // Clean previous session buffers in order to request them only once at app startup.
-    previous_session_buffers_.clear();
+    // Remove all items from locals list that became unavailable.
+    remove_old_local_symbols();
 
     completer_updated_ = true;
 }
@@ -67,130 +104,40 @@ void MainWindow::respond_get_observed_symbols()
 {
     Logger::instance()->info("Received request to provide observed symbols");
 
-    MessageComposer message_composer(&socket_);
-    message_composer.push(MessageType::GetObservedSymbolsResponse)
-        .push(held_buffers_.size());
-    for (const auto& name : held_buffers_)
-        message_composer.push(name.first);
-    message_composer.send();
+    // Prepare a list of observable variables.
+    QStringList observable_vars;
+    foreach (ListType list_type, get_all_list_types()) {
 
-    {
-        std::stringstream ss;
-        bool isFirst = true;
-        for (const auto& name : held_buffers_) {
-
-            if (isFirst)
-                isFirst = false;
-            else
-                ss << ", ";
-
-            ss << name.first;
-        }
-        Logger::instance()->info("Sent observed symbols: {}", ss.str());
-    }
-}
-
-
-QListWidgetItem* MainWindow::add_image_list_item(const std::string& variable_name_str)
-{
-    // Construct an icon stub.
-    const QPixmap buffer_pixmap = draw_image_list_icon_stub();
-
-    // Construct a new list widget item.
-    QListWidgetItem* item = new QListWidgetItem(buffer_pixmap, variable_name_str.c_str(), ui_->imageList_watch);
-    item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                   Qt::ItemIsDragEnabled);
-    ui_->imageList_watch->addItem(item);
-
-    return item;
-}
-
-
-QListWidgetItem* MainWindow::find_image_list_item(const std::string& variable_name_str)
-{
-    // Looking for corresponding item...
-    for (int i = 0; i < ui_->imageList_watch->count(); ++i) {
-
-        QListWidgetItem* item = ui_->imageList_watch->item(i);
-        if (item->data(Qt::UserRole) != variable_name_str.c_str())
+        QListWidget* list_widget = get_list_widget(list_type);
+        if (list_widget == nullptr)
             continue;
 
-        return item;
+        Logger::instance()->info("List widget {}, visibility status {}", get_list_name(list_type).toStdString(), list_widget->isVisible());
+
+        for (int index_item = 0; index_item < list_widget->count(); ++index_item) {
+
+            QListWidgetItem* item = list_widget->item(index_item);
+            if (item == nullptr)
+                continue;
+
+            const QString symbol_value_item_str = item->data(Qt::UserRole).toString();
+            observable_vars.append(symbol_value_item_str);
+
+            // Reset text and icon of list item to visualize that they are loading.
+            item->setText(symbol_value_item_str);
+            item->setIcon(draw_image_list_icon_stub());
+        }
     }
 
-    return nullptr;
-}
+    // Compose message.
+    MessageComposer message_composer(&socket_);
+    message_composer.push(MessageType::GetObservedSymbolsResponse)
+        .push(static_cast<size_t>(observable_vars.size()));
+    for (const auto& symbol_value_item_str : observable_vars)
+        message_composer.push(symbol_value_item_str.toStdString());
+    message_composer.send();
 
-
-QPixmap MainWindow::draw_image_list_icon(const std::shared_ptr<Stage>& stage)
-{
-    // Buffer icon dimensions
-    const QSizeF icon_size   = get_icon_size();
-    const int icon_width     = static_cast<int>(icon_size.width());
-    const int icon_height    = static_cast<int>(icon_size.height());
-    const int bytes_per_line = icon_width * 3;
-
-    if (!stage)
-        return draw_image_list_icon_stub();
-
-    // Update buffer icon
-    ui_->bufferPreview->render_buffer_icon(
-                stage.get(), icon_width, icon_height);
-
-    // Construct icon widget
-    QImage buffer_image_preview(stage->buffer_icon.data(),
-                              icon_width,
-                              icon_height,
-                              bytes_per_line,
-                              QImage::Format_RGB888);
-
-    return QPixmap::fromImage(buffer_image_preview);
-}
-
-
-QPixmap MainWindow::draw_image_list_icon_stub()
-{
-    // Buffer icon dimensions
-    const QSizeF icon_size   = get_icon_size();
-    const int icon_width     = static_cast<int>(icon_size.width());
-    const int icon_height    = static_cast<int>(icon_size.height());
-
-    // Construct stub pixmap.
-    QPixmap buffer_pixmap(icon_width, icon_height);
-    buffer_pixmap.fill(Qt::lightGray);
-    return buffer_pixmap;
-}
-
-
-void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
-{
-    QPixmap bufferPixmap;
-
-    // Try to find stage of a corresponding variable.
-    auto itStage = stages_.find(variable_name_str);
-    if (itStage != stages_.end())
-        bufferPixmap = draw_image_list_icon(itStage->second);
-    else
-        bufferPixmap = draw_image_list_icon_stub();
-
-    // Replace icon in the corresponding item
-    QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item == nullptr)
-        return;
-
-    item->setIcon(bufferPixmap);
-}
-
-
-void MainWindow::update_image_list_label(const std::string& variable_name_str, const std::string& label_str)
-{
-    // Replace text in the corresponding item
-    QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item == nullptr)
-        return;
-
-    item->setText(label_str.c_str());
+    Logger::instance()->info("Sent observed symbols: {}", observable_vars.join(", ").toStdString());
 }
 
 
@@ -275,14 +222,23 @@ void MainWindow::decode_plot_buffer_contents()
                 pixel_layout_str,
                 transpose_buffer);
 
-    // Construct a new list widget if needed
-    QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item == nullptr)
-        item = add_image_list_item(variable_name_str);
-
     // In case if item is selected - show it
-    if (item->isSelected() && item->listWidget()->isVisible())
-        buffer_selected(item);
+    foreach (ListType list_type, get_all_list_types()) {
+
+        QListWidget* list_widget = get_list_widget(list_type);
+        if (list_widget == nullptr)
+            continue;
+
+        if (!list_widget->isVisible())
+            continue;
+
+        QListWidgetItem* item = find_image_list_item(list_type, variable_name_str);
+        if (item == nullptr)
+            continue;
+
+        if (item->isSelected())
+            buffer_selected(item);
+    }
 
     // Update icon and text of corresponding item in image list
     // TODO: Icon painting works incorrectly for small matrices.
