@@ -30,6 +30,7 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <unordered_set>
 #include <string>
 
 #include <QAbstractButton>
@@ -155,7 +156,9 @@ public Q_SLOTS:
 
     void rotate_90_ccw();
 
-    void buffer_selected(QListWidgetItem* item);
+    void image_list_tab_selected();
+
+    void image_list_item_selected(QListWidgetItem* item);
 
     void remove_selected_watch_list_item();
 
@@ -204,6 +207,7 @@ public Q_SLOTS:
     std::map<std::string, std::shared_ptr<Stage>> stages_;
 
     QStringList available_vars_;
+    std::unordered_set<std::string> loaded_vars_;
 
     std::mutex ui_mutex_;
 
@@ -256,6 +260,8 @@ public Q_SLOTS:
     void remove_old_local_symbols();
     void decode_set_available_symbols();
 
+    void reset_image_lists_data();
+    QStringList prepare_observed_symbols_list();
     void respond_get_observed_symbols();
 
     void decode_incoming_messages();

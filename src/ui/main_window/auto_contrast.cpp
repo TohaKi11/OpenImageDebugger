@@ -53,13 +53,24 @@ void disable_inputs(const initializer_list<QLineEdit*>& inputs)
 
 void MainWindow::reset_ac_min_labels()
 {
-    if (currently_selected_stage_ == nullptr)
+    if (currently_selected_stage_ == nullptr) {
+
+        ui_->ac_c1_min->clear();
+        ui_->ac_c2_min->clear();
+        ui_->ac_c3_min->clear();
+        ui_->ac_c4_min->clear();
+
+        disable_inputs(
+            {ui_->ac_c1_min, ui_->ac_c2_min,
+             ui_->ac_c3_min, ui_->ac_c4_min});
         return;
+    }
 
     GameObject* buffer_obj = currently_selected_stage_->get_game_object("buffer");
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_min  = buffer->min_buffer_values();
 
+    enable_inputs({ui_->ac_c1_min});
     ui_->ac_c1_min->setText(QString::number(ac_min[0]));
 
     if (buffer->channels == 4) {
@@ -90,14 +101,26 @@ void MainWindow::reset_ac_min_labels()
 
 void MainWindow::reset_ac_max_labels()
 {
-    if (currently_selected_stage_ == nullptr)
+    if (currently_selected_stage_ == nullptr) {
+
+        ui_->ac_c1_max->clear();
+        ui_->ac_c2_max->clear();
+        ui_->ac_c3_max->clear();
+        ui_->ac_c4_max->clear();
+
+        disable_inputs(
+            {ui_->ac_c1_max, ui_->ac_c2_max,
+             ui_->ac_c3_max, ui_->ac_c4_max});
         return;
+    }
 
     GameObject* buffer_obj = currently_selected_stage_->get_game_object("buffer");
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_max  = buffer->max_buffer_values();
 
+    enable_inputs({ui_->ac_c1_max});
     ui_->ac_c1_max->setText(QString::number(ac_max[0]));
+
     if (buffer->channels == 4) {
         enable_inputs({ui_->ac_c2_max, ui_->ac_c3_max, ui_->ac_c4_max});
 
@@ -252,4 +275,3 @@ void MainWindow::set_ac_max_value(int idx, float value)
     request_render_update_ = true;
     request_icons_update_ = true;
 }
-

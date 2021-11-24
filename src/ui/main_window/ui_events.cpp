@@ -222,14 +222,53 @@ void MainWindow::rotate_90_ccw()
 }
 
 
-void MainWindow::buffer_selected(QListWidgetItem* item)
+void MainWindow::image_list_tab_selected()
 {
-    if (item == nullptr)
-        return;
+    bool is_item_selected = false;
+    foreach (ListType list_type, get_all_list_types()) {
 
-    const string symbol_name_str = item->data(Qt::UserRole).toString().toStdString();
-    if (symbol_name_str.empty())
-        return;
+        QListWidget* list_widget = get_list_widget(list_type);
+        if (list_widget == nullptr)
+            continue;
+
+        // Skip list it its tab isn't selected.
+        if (!list_widget->isVisible())
+            continue;
+
+        for (int index_item = 0; index_item < list_widget->count(); ++index_item) {
+
+            QListWidgetItem* item = list_widget->item(index_item);
+            if (item == nullptr)
+                continue;
+
+            const bool is_selected = list_widget->currentItem() == item;
+            const std::string symbol_value_item_str = item->data(Qt::UserRole).toString().toStdString();
+
+            // Preview selected symbol.
+            if (is_selected) {
+
+                is_item_selected = true;
+                item->setSelected(true);
+                image_list_item_selected(item);
+            }
+
+            // Request buffer data from debugger bridge if symbol isn't synchronized yet
+            if (loaded_vars_.count(symbol_value_item_str) == 0)
+                request_plot_buffer(symbol_value_item_str);
+        }
+    }
+
+    // If no items are selected - close preview.
+    if (!is_item_selected)
+        image_list_item_selected(nullptr);
+}
+
+
+void MainWindow::image_list_item_selected(QListWidgetItem* item)
+{
+    string symbol_name_str;
+    if (item != nullptr)
+        symbol_name_str = item->data(Qt::UserRole).toString().toStdString();
 
     auto stage = stages_.find(symbol_name_str);
     if (stage != stages_.end())
@@ -401,7 +440,7 @@ void MainWindow::show_context_menu(ListType type, const QPoint& pos)
     exportAction->setData(symbol_name_str);
 
     // Show context menu at handling position
-    QPoint globalPos = ui_->imageList_watch->mapToGlobal(pos);
+    QPoint globalPos = list_widget->mapToGlobal(pos);
     myMenu.exec(globalPos);
 }
 

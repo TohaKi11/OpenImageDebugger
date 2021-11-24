@@ -90,6 +90,9 @@ void MainWindow::decode_set_available_symbols()
 
     Logger::instance()->info("Received available symbols: {}", available_vars_.join(", ").toStdString());
 
+    // Debugger just hit the breakpoint. All variables are not synced now.
+    loaded_vars_.clear();
+
     // Add new local available items to the locals list.
     add_new_local_symbols();
 
@@ -100,19 +103,13 @@ void MainWindow::decode_set_available_symbols()
 }
 
 
-void MainWindow::respond_get_observed_symbols()
+void MainWindow::reset_image_lists_data()
 {
-    Logger::instance()->info("Received request to provide observed symbols");
-
-    // Prepare a list of observable variables.
-    QStringList observable_vars;
     foreach (ListType list_type, get_all_list_types()) {
 
         QListWidget* list_widget = get_list_widget(list_type);
         if (list_widget == nullptr)
             continue;
-
-        Logger::instance()->info("List widget {}, visibility status {}", get_list_name(list_type).toStdString(), list_widget->isVisible());
 
         for (int index_item = 0; index_item < list_widget->count(); ++index_item) {
 
@@ -121,13 +118,57 @@ void MainWindow::respond_get_observed_symbols()
                 continue;
 
             const QString symbol_value_item_str = item->data(Qt::UserRole).toString();
-            observable_vars.append(symbol_value_item_str);
 
-            // Reset text and icon of list item to visualize that they are loading.
             item->setText(symbol_value_item_str);
             item->setIcon(draw_image_list_icon_stub());
         }
     }
+}
+
+
+QStringList MainWindow::prepare_observed_symbols_list()
+{
+    QStringList observable_vars;
+    foreach (ListType list_type, get_all_list_types()) {
+
+        QListWidget* list_widget = get_list_widget(list_type);
+        if (list_widget == nullptr)
+            continue;
+
+        // Skip list it its tab isn't selected.
+        if (!list_widget->isVisible())
+            continue;
+
+        for (int index_item = 0; index_item < list_widget->count(); ++index_item) {
+
+            QListWidgetItem* item = list_widget->item(index_item);
+            if (item == nullptr)
+                continue;
+
+            const bool is_selected = list_widget->currentItem() == item;
+            const QString symbol_value_item_str = item->data(Qt::UserRole).toString();
+
+            // Prioritize symbol which is selected (preview is shown).
+            if (is_selected)
+                observable_vars.prepend(symbol_value_item_str);
+            else
+                observable_vars.append(symbol_value_item_str);
+        }
+    }
+
+    return observable_vars;
+}
+
+
+void MainWindow::respond_get_observed_symbols()
+{
+    Logger::instance()->info("Received request to provide observed symbols");
+
+    // Reset text and icon of list item to visualize that they are loading.
+    reset_image_lists_data();
+
+    // Prepare a list of observable variables.
+    QStringList observable_vars = prepare_observed_symbols_list();
 
     // Compose message.
     MessageComposer message_composer(&socket_);
@@ -236,8 +277,9 @@ void MainWindow::decode_plot_buffer_contents()
         if (item == nullptr)
             continue;
 
-        if (item->isSelected())
-            buffer_selected(item);
+        const bool is_selected = list_widget->currentItem() == item;
+        if (is_selected)
+            image_list_item_selected(item);
     }
 
     // Update icon and text of corresponding item in image list
@@ -250,6 +292,9 @@ void MainWindow::decode_plot_buffer_contents()
     // Update AC values
     reset_ac_min_labels();
     reset_ac_max_labels();
+
+    // This variable is synchronized now.
+    loaded_vars_.insert(variable_name_str);
 
     // Update list of observed symbols in settings
     persist_settings_deferred();

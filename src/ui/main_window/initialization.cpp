@@ -387,15 +387,20 @@ void MainWindow::initialize_symbol_completer()
 
 void MainWindow::initialize_left_pane()
 {
+    connect(ui_->tabWidget,
+            &QTabWidget::currentChanged,
+            this,
+            &MainWindow::image_list_tab_selected);
+
     connect(ui_->imageList_locals,
             SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
             this,
-            SLOT(buffer_selected(QListWidgetItem*)));
+            SLOT(image_list_item_selected(QListWidgetItem*)));
 
     connect(ui_->imageList_watch,
             SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
             this,
-            SLOT(buffer_selected(QListWidgetItem*)));
+            SLOT(image_list_item_selected(QListWidgetItem*)));
 
     connect(ui_->symbolList,
             SIGNAL(editingFinished()),
