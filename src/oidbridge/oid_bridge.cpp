@@ -48,6 +48,8 @@ using namespace std;
 struct UiMessage
 {
     virtual ~UiMessage();
+
+    virtual bool isSame(const UiMessage& other) const = 0;
 };
 
 UiMessage::~UiMessage()
@@ -58,20 +60,52 @@ struct GetObservedSymbolsResponseMessage : public UiMessage
 {
     std::deque<string> observed_symbols;
     ~GetObservedSymbolsResponseMessage();
+
+    virtual bool isSame(const UiMessage& other) const ;
 };
 
 GetObservedSymbolsResponseMessage::~GetObservedSymbolsResponseMessage()
 {
 }
 
+bool GetObservedSymbolsResponseMessage::isSame(const UiMessage& other) const
+{
+    try {
+
+        const auto& other_casted = dynamic_cast<const GetObservedSymbolsResponseMessage&>(other);
+
+        return observed_symbols == other_casted.observed_symbols;
+
+    }  catch (const std::bad_cast&) {
+
+        return false;
+    }
+}
+
 struct PlotBufferRequestMessage : public UiMessage
 {
     std::string buffer_name;
     ~PlotBufferRequestMessage();
+
+    virtual bool isSame(const UiMessage& other) const ;
 };
 
 PlotBufferRequestMessage::~PlotBufferRequestMessage()
 {
+}
+
+bool PlotBufferRequestMessage::isSame(const UiMessage& other) const
+{
+    try {
+
+        const auto& other_casted = dynamic_cast<const PlotBufferRequestMessage&>(other);
+
+        return buffer_name == other_casted.buffer_name;
+
+    }  catch (const std::bad_cast&) {
+
+        return false;
+    }
 }
 
 class PyGILRAII
@@ -276,7 +310,7 @@ class OidBridge
 
     int (*plot_callback_)(const char*);
 
-    std::map<MessageType, std::queue<std::unique_ptr<UiMessage>>> received_messages_;
+    std::map<MessageType, std::list<std::unique_ptr<UiMessage>>> received_messages_;
 
 private:
     std::unique_ptr<UiMessage>
@@ -294,7 +328,7 @@ private:
 
         // Take the olders message from queue (FIFO).
         unique_ptr<UiMessage> result = std::move(queue_messages.front());
-        queue_messages.pop();
+        queue_messages.pop_front();
         return result;
     }
 
@@ -332,13 +366,13 @@ private:
                           static_cast<qint64>(sizeof(header)));
 
             // Read the rest of the message depending on its type.
-            unique_ptr<UiMessage> result;
+            unique_ptr<UiMessage> message;
             switch (header) {
             case MessageType::PlotBufferRequest:
-                result = decode_plot_buffer_request();
+                message = decode_plot_buffer_request();
                 break;
             case MessageType::GetObservedSymbolsResponse:
-                result = decode_get_observed_symbols_response();
+                message = decode_get_observed_symbols_response();
                 break;
             default:
                 Logger::instance()->error("Received message with incorrect header");
@@ -347,11 +381,20 @@ private:
 
             // Put the message in the end of the queue.
             auto& queue_messages = received_messages_[header];
-            queue_messages.push(std::move(result));
 
+            // Remove duplicated messages.
+            queue_messages.remove_if([&message](const std::unique_ptr<UiMessage>& other){
+
+                return message->isSame(*other.get());
+            });
+
+            // Add new message to the queue.
+            queue_messages.push_back(std::move(message));
+
+            // Remove obsolete messages.
             const size_t queue_size_limit = get_queue_size_limit(header);
             while (!queue_messages.empty() && queue_messages.size() > queue_size_limit)
-                queue_messages.pop();
+                queue_messages.pop_front();
 
         } while (client_->bytesAvailable() > 0);
     }
