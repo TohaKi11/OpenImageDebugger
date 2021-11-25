@@ -59,22 +59,24 @@ void SymbolSearchInput::keyPressEvent(QKeyEvent* e)
     // The following keys are forwarded by the completer to the widget
     switch (e->key()) {
     case Qt::Key_Escape:
+        if (completer_)
+            completer_->popup()->hide();
+        return;
+    case Qt::Key_Enter:
+    case Qt::Key_Return:
         clearFocus();
-        e->accept();
         return;
     case Qt::Key_Tab:
     case Qt::Key_Backtab:
-    case Qt::Key_Enter:
-    case Qt::Key_Return:
         e->ignore();
         return; // Let the completer do default behavior
     }
 
+    // Don't send the shortcut (CTRL-E) to the text edit.
     bool is_shortcut =
         (e->modifiers() & Qt::ControlModifier) && e->key() == Qt::Key_E;
     if (!is_shortcut)
-        QLineEdit::keyPressEvent(
-            e); // Don't send the shortcut (CTRL-E) to the text edit.
+        QLineEdit::keyPressEvent(e);
 
     if (!completer_)
         return;
