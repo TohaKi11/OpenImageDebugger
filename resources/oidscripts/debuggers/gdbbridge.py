@@ -40,11 +40,15 @@ class GdbBridge(BridgeInterface):
                 requests_to_process = self._pending_requests
                 self._pending_requests = []
 
+            was_working = False
+
             while requests_to_process:
+                was_working = True
                 callback = requests_to_process.pop(0)
                 gdb.post_event(callback)
 
-            time.sleep(0.1)
+            if not was_working:
+                time.sleep(0.1)
 
     def queue_request(self, callable_request):
         with self._lock:

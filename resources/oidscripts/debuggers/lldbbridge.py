@@ -88,14 +88,19 @@ class LldbBridge(BridgeInterface):
                 if event == 'stop':
                     is_stop_detected = True
 
+            was_working = False
+
             if is_stop_detected and self._event_handler is not None:
+                was_working = True
                 self._event_handler.stop_handler()
 
             while requests_to_process:
+                was_working = True
                 callback = requests_to_process.pop(0)
                 callback()
 
-            time.sleep(0.1)
+            if not was_working:
+                time.sleep(0.1)
 
     def queue_request(self, callable_request):
         # type: (Callable[[None],None]) -> None

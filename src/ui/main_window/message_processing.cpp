@@ -327,7 +327,6 @@ void MainWindow::decode_discard_buffer_contents()
     // Update icon and text of corresponding item in image list
     repaint_image_list_icon(variable_name_str);
     update_image_list_label(variable_name_str, label_str);
-    //TODO
 }
 
 
@@ -340,9 +339,8 @@ void MainWindow::decode_incoming_messages()
 
     available_vars_.clear();
 
-    if (socket_.bytesAvailable() == 0) {
+    if (socket_.bytesAvailable() == 0)
         return;
-    }
 
     MessageType header;
     if (!socket_.read(reinterpret_cast<char*>(&header),
@@ -350,7 +348,8 @@ void MainWindow::decode_incoming_messages()
         return;
     }
 
-    socket_.waitForReadyRead(100);
+    if (socket_.bytesAvailable() == 0)
+        socket_.waitForReadyRead(100);
 
     switch (header) {
     case MessageType::SetAvailableSymbols:

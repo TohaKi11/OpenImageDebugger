@@ -366,11 +366,12 @@ private:
         assert(client_ != nullptr);
 
         do {
-            client_->waitForReadyRead(msecs);
 
-            if (client_->bytesAvailable() == 0) {
+            if (client_->bytesAvailable() == 0)
+                client_->waitForReadyRead(msecs);
+
+            if (client_->bytesAvailable() == 0)
                 break;
-            }
 
             // Read the header of the message.
             MessageType header;
