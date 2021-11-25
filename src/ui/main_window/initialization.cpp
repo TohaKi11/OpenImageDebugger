@@ -353,11 +353,34 @@ void MainWindow::initialize_timers()
 
 void MainWindow::initialize_shortcuts()
 {
+    QShortcut* locals_tab_focus_shortcut_ = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_1), this);
+    connect(locals_tab_focus_shortcut_,
+            &QShortcut::activated,
+            this,
+            [this](){
+                ui_->tabWidget->setCurrentWidget(ui_->tab_locals);
+            });
+
+    QShortcut* watch_tab_focus_shortcut_ = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_2), this);
+    connect(watch_tab_focus_shortcut_,
+            &QShortcut::activated,
+            this,
+            [this](){
+                ui_->tabWidget->setCurrentWidget(ui_->tab_watch);
+            });
+
     QShortcut* symbol_list_focus_shortcut_ = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
     connect(symbol_list_focus_shortcut_,
             SIGNAL(activated()),
             ui_->symbolList,
             SLOT(setFocus()));
+
+    connect(symbol_list_focus_shortcut_,
+            &QShortcut::activated,
+            this,
+            [this](){
+                ui_->tabWidget->setCurrentWidget(ui_->tab_watch);
+            });
 
     QShortcut* watch_buffer_removal_shortcut_a_ = new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList_watch);
     QShortcut* watch_buffer_removal_shortcut_b_ = new QShortcut(QKeySequence(Qt::Key_Backspace), ui_->imageList_watch);
