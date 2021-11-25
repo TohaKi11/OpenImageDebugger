@@ -123,6 +123,7 @@ void Logger::init_logger()
         // Initialize file logger.
         logger_ = spdlog::basic_logger_mt(logger_name_, path_dir_str + file_name_ + ".txt");
 
+        spdlog::set_level(spdlog::level::trace);
         spdlog::flush_on(spdlog::level::trace);
     } catch (const spdlog::spdlog_ex& ex) {
 
