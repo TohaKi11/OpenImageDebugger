@@ -117,9 +117,12 @@ void MainWindow::reset_image_lists_data()
             if (item == nullptr)
                 continue;
 
-            const QString symbol_value_item_str = item->data(Qt::UserRole).toString();
+            const std::string symbol_value_item_str = item->data(Qt::UserRole).toString().toStdString();
 
-            item->setText(symbol_value_item_str);
+            const std::string label_str = construct_image_list_label(
+                        symbol_value_item_str, "Loading...");
+
+            item->setText(QString::fromStdString(label_str));
             item->setIcon(draw_image_list_icon_stub());
         }
     }
@@ -172,8 +175,9 @@ void MainWindow::respond_get_observed_symbols()
 
     // Compose message.
     MessageComposer message_composer(&socket_);
-    message_composer.push(MessageType::GetObservedSymbolsResponse)
-        .push(static_cast<size_t>(observable_vars.size()));
+    message_composer
+            .push(MessageType::GetObservedSymbolsResponse)
+            .push(static_cast<size_t>(observable_vars.size()));
     for (const auto& symbol_value_item_str : observable_vars)
         message_composer.push(symbol_value_item_str.toStdString());
     message_composer.send();
@@ -197,18 +201,19 @@ void MainWindow::decode_plot_buffer_contents()
     vector<uint8_t> buff_contents;
 
     MessageDecoder message_decoder(&socket_);
-    message_decoder.read(variable_name_str)
-        .read(display_name_str)
-        .read(pixel_layout_str)
-        .read(transpose_buffer)
-        .read(buff_width)
-        .read(buff_height)
-        .read(buff_channels)
-        .read(buff_stride)
-        .read(buff_type)
-        .read(buff_contents);
+    message_decoder
+            .read(variable_name_str)
+            .read(display_name_str)
+            .read(pixel_layout_str)
+            .read(transpose_buffer)
+            .read(buff_width)
+            .read(buff_height)
+            .read(buff_channels)
+            .read(buff_stride)
+            .read(buff_type)
+            .read(buff_contents);
 
-    Logger::instance()->info("Received symbol data: {}", display_name_str);
+    Logger::instance()->info("Received command to plot symbol data: {}", variable_name_str);
 
     // Put the data buffer into the container
     if (buff_type == BufferType::Float64) {
@@ -228,15 +233,6 @@ void MainWindow::decode_plot_buffer_contents()
     } else {
         visualized_width  = buff_height;
         visualized_height = buff_width;
-    }
-
-    string label_str;
-    {
-        stringstream label_ss;
-        label_ss << display_name_str;
-        label_ss << "\n[" << visualized_width << "x" << visualized_height << "]";
-        label_ss << "\n" << get_type_label(buff_type, buff_channels);
-        label_str = label_ss.str();
     }
 
     // Find corresponding stage buffer
@@ -282,6 +278,11 @@ void MainWindow::decode_plot_buffer_contents()
             image_list_item_selected(item);
     }
 
+    const string label_str = construct_image_list_label(
+                display_name_str,
+                visualized_width, visualized_height,
+                buff_type, buff_channels);
+
     // Update icon and text of corresponding item in image list
     // TODO: Icon painting works incorrectly for small matrices.
     // Whole app window remains painted with the matrix colors.
@@ -303,10 +304,37 @@ void MainWindow::decode_plot_buffer_contents()
 }
 
 
+void MainWindow::decode_discard_buffer_contents()
+{
+    // Read symbol info
+    string variable_name_str;
+    string exception_text_str;
+
+    MessageDecoder message_decoder(&socket_);
+    message_decoder
+            .read(variable_name_str)
+            .read(exception_text_str);
+
+    Logger::instance()->info("Received command to discard symbol data: {} with an error {}",
+                             variable_name_str, exception_text_str);
+
+    // Remove stage object and held buffer
+    erase_stage(variable_name_str);
+
+    const string label_str = construct_image_list_label(
+                variable_name_str, exception_text_str);
+
+    // Update icon and text of corresponding item in image list
+    repaint_image_list_icon(variable_name_str);
+    update_image_list_label(variable_name_str, label_str);
+    //TODO
+}
+
+
 void MainWindow::decode_incoming_messages()
 {
     // Close application if server has disconnected
-    if(socket_.state() == QTcpSocket::UnconnectedState) {
+    if (socket_.state() == QTcpSocket::UnconnectedState) {
         QApplication::quit();
     }
 
@@ -334,6 +362,9 @@ void MainWindow::decode_incoming_messages()
     case MessageType::PlotBufferContents:
         decode_plot_buffer_contents();
         break;
+    case MessageType::DiscardBufferContents:
+        decode_discard_buffer_contents();
+        break;
     default:
         Logger::instance()->info("Received undefined command");
         break;
@@ -344,9 +375,10 @@ void MainWindow::decode_incoming_messages()
 void MainWindow::request_plot_buffer(const std::string& buffer_name_str)
 {
     MessageComposer message_composer(&socket_);
-    message_composer.push(MessageType::PlotBufferRequest)
-        .push(buffer_name_str)
-        .send();
+    message_composer
+            .push(MessageType::PlotBufferRequest)
+            .push(buffer_name_str)
+            .send();
 
     Logger::instance()->info("Sent request to provide symbol data: {}", buffer_name_str);
 }

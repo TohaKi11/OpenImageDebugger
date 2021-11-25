@@ -378,6 +378,22 @@ void MainWindow::persist_settings_deferred()
 }
 
 
+void MainWindow::erase_stage(const std::string& symbol_name_str)
+{
+    auto it_stage = stages_.find(symbol_name_str);
+    if (it_stage != stages_.end()) {
+
+        std::shared_ptr<Stage> stage_shr_ptr = it_stage->second;
+        if (stage_shr_ptr && currently_selected_stage_ == stage_shr_ptr.get())
+            set_currently_selected_stage(nullptr);
+
+        stages_.erase(it_stage);
+    }
+
+    held_buffers_.erase(symbol_name_str);
+}
+
+
 void MainWindow::set_currently_selected_stage(Stage* stage)
 {
     currently_selected_stage_ = stage;
@@ -424,11 +440,8 @@ void MainWindow::remove_image_list_item(ListType type, const std::string& symbol
     Logger::instance()->info("Removed symbol {} from the {} list", symbol_name_str, get_list_name(type).toStdString());
 
     // Remove stage object if there no other links to the buffer in any list.
-    if (is_list_item_exists(symbol_name_str)) {
-
-        stages_.erase(symbol_name_str);
-        held_buffers_.erase(symbol_name_str);
-    }
+    if (is_list_item_exists(symbol_name_str))
+        erase_stage(symbol_name_str);
 
     // It this was the last item in the list.
     if (get_list_widget(type)->count() == 0 || stages_.size() == 0)
@@ -542,8 +555,43 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 }
 
 
+string chop_first_line(const std::string& str)
+{
+    const size_t pos = str.find_first_of("\r\n");
+    if (pos == std::string::npos)
+        return str;
+
+    return str.substr(0, pos);
+}
+
+
+string MainWindow::construct_image_list_label(const std::string& display_name_str,
+                                  int visualized_width, int visualized_height,
+                                  BufferType buff_type, int buff_channels)
+{
+    stringstream label_ss;
+    label_ss << chop_first_line(display_name_str);
+    label_ss << "\n[" << visualized_width << "x" << visualized_height << "]";
+    label_ss << "\n" << get_type_label(buff_type, buff_channels);
+    return label_ss.str();
+}
+
+
+string MainWindow::construct_image_list_label(const std::string& display_name_str,
+                                  const std::string& status_str)
+{
+    stringstream label_ss;
+    label_ss << chop_first_line(display_name_str);
+    label_ss << "\n" << chop_first_line(status_str);
+    label_ss << "\n";
+    return label_ss.str();
+}
+
+
 void MainWindow::update_image_list_label(const std::string& variable_name_str, const std::string& label_str)
 {
+    QString label_qstr = QString::fromStdString(label_str);
+
     // Replace text in the corresponding item
     foreach (ListType list_type, get_all_list_types()) {
 
@@ -551,6 +599,6 @@ void MainWindow::update_image_list_label(const std::string& variable_name_str, c
         if (item == nullptr)
             continue;
 
-        item->setText(label_str.c_str());
+        item->setText(label_qstr);
     }
 }

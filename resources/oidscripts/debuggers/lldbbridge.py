@@ -148,11 +148,11 @@ class LldbBridge(BridgeInterface):
 
         # Check if buffer is initialized
         if buffer_metadata['pointer'] == 0x0:
-            raise Exception('Variable %s metadata retrieve failed. Invalid null buffer pointer' % variable)
+            raise Exception('Invalid null buffer pointer')
         if bufsize == 0:
-            raise Exception('Variable %s metadata retrieve failed. Invalid buffer of zero bytes' % variable)
+            raise Exception('Invalid buffer of zero bytes')
         elif bufsize >= sysinfo.get_available_memory() / 10:
-            raise Exception('Variable %s metadata retrieve failed. Invalid buffer size larger than available memory' % variable)
+            raise Exception('Invalid buffer size larger than available memory')
 
         buffer_metadata['variable_name'] = variable
 
@@ -161,7 +161,7 @@ class LldbBridge(BridgeInterface):
             buffer_metadata['pointer'], bufsize, error_ref))
 
         if not error_ref.Success():
-            raise Exception('Variable %s metadata retrieve failed. Failed to retrieve memory buffer: %s' % (variable, str(error_ref)))
+            raise Exception('Failed to retrieve memory buffer\n%s' % str(error_ref))
 
         return buffer_metadata
 

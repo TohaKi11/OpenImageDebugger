@@ -75,6 +75,13 @@ class OpenImageDebuggerWindow(object):
         ]
         self._lib.oid_plot_buffer.restype = None
 
+        self._lib.oid_discard_buffer.argtypes = [
+            ctypes.c_void_p,
+            ctypes.py_object,
+            ctypes.py_object
+        ]
+        self._lib.oid_discard_buffer.restype = None
+
         # UI handler
         self._native_handler = None
         self._event_loop_wait_time = 1.0/30.0
@@ -238,6 +245,11 @@ class DeferredVariablePlotter(object):
 
         except Exception as err:
             import traceback
+
+            self._lib.oid_discard_buffer(
+                self._native_handler,
+                self._variable,
+                str(err))
 
             error_str = 'Could not plot variable %s: %s \n%s' % \
                 (self._variable, str(err), ''.join(traceback.format_exc()))

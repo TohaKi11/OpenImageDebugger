@@ -357,9 +357,8 @@ void MainWindow::reload_buffer_action()
     if (sender_action == nullptr)
         return;
 
-    const QString symbol_name_str = sender_action->data().toString();
-    const std::string symbol_name_stdstr = symbol_name_str.toStdString();
-    if (symbol_name_stdstr.empty())
+    const std::string symbol_name_str = sender_action->data().toString().toStdString();
+    if (symbol_name_str.empty())
         return;
 
     // Reset text and icon of list item to visualize that it is loading.
@@ -375,17 +374,20 @@ void MainWindow::reload_buffer_action()
             if (item == nullptr)
                 continue;
 
-            const QString current_symbol_name_str = item->data(Qt::UserRole).toString();
+            const std::string current_symbol_name_str = item->data(Qt::UserRole).toString().toStdString();
             if (current_symbol_name_str != symbol_name_str)
                 continue;
 
-            item->setText(symbol_name_str);
+            const std::string label_str = construct_image_list_label(
+                        current_symbol_name_str, "Loading...");
+
+            item->setText(QString::fromStdString(label_str));
             item->setIcon(draw_image_list_icon_stub());
         }
     }
 
     // Request buffer data from debugger bridge
-    request_plot_buffer(symbol_name_stdstr);
+    request_plot_buffer(symbol_name_str);
 }
 
 

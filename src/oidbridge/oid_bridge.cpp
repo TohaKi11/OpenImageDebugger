@@ -277,7 +277,20 @@ class OidBridge
             .push(buff_ptr, buff_length)
             .send();
 
-        Logger::instance()->info("Sent symbol data: {}", display_name_str);
+        Logger::instance()->info("Sent command to plot symbol data: {}", variable_name_str);
+    }
+
+    void discard_buffer(const string& variable_name_str,
+                        const string& exception_text_str)
+    {
+        MessageComposer message_composer(client_);
+        message_composer.push(MessageType::DiscardBufferContents)
+            .push(variable_name_str)
+            .push(exception_text_str)
+            .send();
+
+        Logger::instance()->info("Sent command to discard symbol data: {} with an error {}",
+                                 variable_name_str, exception_text_str);
     }
 
     void run_event_loop()
@@ -846,4 +859,28 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
                      buff_type,
                      buff_ptr,
                      buff_size);
+}
+
+
+void oid_discard_buffer(AppHandler handler, PyObject* variable_name_py, PyObject* exception_text_py)
+{
+    PyGILRAII py_gil_raii;
+
+    OidBridge* app = static_cast<OidBridge*>(handler);
+
+    if (app == nullptr) {
+
+        const std::string error_str = "oid_discard_buffer received null application handler";
+        Logger::instance()->error(error_str);
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError, error_str.c_str());
+        return;
+    }
+
+    string variable_name_str;
+    copy_py_string(variable_name_str, variable_name_py);
+
+    string exception_text_str;
+    copy_py_string(exception_text_str, exception_text_py);
+
+    app->discard_buffer(variable_name_str, exception_text_str);
 }

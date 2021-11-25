@@ -237,6 +237,7 @@ public Q_SLOTS:
 
     void persist_settings_deferred();
 
+    void erase_stage(const std::string& symbol_name_str);
     void set_currently_selected_stage(Stage* stage);
 
     std::pair<int, int> get_stage_coordinates(float pos_window_x, float pos_window_y);
@@ -252,8 +253,15 @@ public Q_SLOTS:
     QPixmap draw_image_list_icon(const std::shared_ptr<Stage>& stage);
     QPixmap draw_image_list_icon_stub();
     void repaint_image_list_icon(const std::string& variable_name_str);
+
+    std::string construct_image_list_label(const std::string& display_name_str,
+                                      int visualized_width, int visualized_height,
+                                      BufferType buff_type, int buff_channels);
+    std::string construct_image_list_label(const std::string& display_name_str,
+                                      const std::string& status_str);
     void update_image_list_label(const std::string& variable_name_str, const std::string& label_str);
     void decode_plot_buffer_contents();
+    void decode_discard_buffer_contents();
 
     ///
     // Communication with debugger bridge
