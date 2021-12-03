@@ -384,8 +384,8 @@ void MainWindow::erase_stage(const std::string& symbol_name_str)
     if (it_stage != stages_.end()) {
 
         std::shared_ptr<Stage> stage_shr_ptr = it_stage->second;
-        if (stage_shr_ptr && currently_selected_stage_ == stage_shr_ptr.get())
-            set_currently_selected_stage(nullptr);
+        if (currently_selected_stage_ && stage_shr_ptr && (currently_selected_stage_.get() == stage_shr_ptr.get()))
+            reset_currently_selected_stage();
 
         stages_.erase(it_stage);
     }
@@ -394,9 +394,15 @@ void MainWindow::erase_stage(const std::string& symbol_name_str)
 }
 
 
-void MainWindow::set_currently_selected_stage(Stage* stage)
+void MainWindow::set_currently_selected_stage(const std::shared_ptr<Stage>& stage)
 {
     currently_selected_stage_ = stage;
+    request_render_update_    = true;
+}
+
+void MainWindow::reset_currently_selected_stage()
+{
+    currently_selected_stage_.reset();
     request_render_update_    = true;
 }
 
@@ -445,7 +451,7 @@ void MainWindow::remove_image_list_item(ListType type, const std::string& symbol
 
     // It this was the last item in the list.
     if (get_list_widget(type)->count() == 0 || stages_.size() == 0)
-        set_currently_selected_stage(nullptr);
+        reset_currently_selected_stage();
 
     // Update previous session settings in case of a watch list item deletion.
     if (type == ListType::Watch)

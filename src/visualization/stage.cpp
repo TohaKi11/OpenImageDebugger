@@ -195,9 +195,11 @@ void Stage::draw()
     // GUI)
 
     GameObject* camera_obj = all_game_objects["camera"].get();
+    if (camera_obj == nullptr)
+        return;
+
     Camera* camera_component =
         camera_obj->get_component<Camera>("camera_component");
-
     if (camera_component == nullptr)
         return;
 

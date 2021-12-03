@@ -202,7 +202,7 @@ public Q_SLOTS:
 
     QString default_export_suffix_;
 
-    Stage* currently_selected_stage_;
+    std::shared_ptr<Stage> currently_selected_stage_;
 
     std::map<std::string, std::vector<uint8_t>> held_buffers_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
@@ -238,7 +238,8 @@ public Q_SLOTS:
     void persist_settings_deferred();
 
     void erase_stage(const std::string& symbol_name_str);
-    void set_currently_selected_stage(Stage* stage);
+    void set_currently_selected_stage(const std::shared_ptr<Stage>& stage);
+    void reset_currently_selected_stage();
 
     std::pair<int, int> get_stage_coordinates(float pos_window_x, float pos_window_y);
 

@@ -190,7 +190,7 @@ void MainWindow::rotate_90_cw()
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            request_90_cw_rotation(currently_selected_stage_);
+            request_90_cw_rotation(currently_selected_stage_.get());
         }
     }
 
@@ -214,7 +214,7 @@ void MainWindow::rotate_90_ccw()
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            request_90_ccw_rotation(currently_selected_stage_);
+            request_90_ccw_rotation(currently_selected_stage_.get());
         }
     }
 
@@ -273,11 +273,11 @@ void MainWindow::image_list_item_selected(QListWidgetItem* item)
     if (item != nullptr)
         symbol_name_str = item->data(Qt::UserRole).toString().toStdString();
 
-    auto stage = stages_.find(symbol_name_str);
-    if (stage != stages_.end())
-        set_currently_selected_stage(stage->second.get());
+    auto it_stage = stages_.find(symbol_name_str);
+    if (it_stage != stages_.end())
+        set_currently_selected_stage(it_stage->second);
     else
-        set_currently_selected_stage(nullptr);
+        reset_currently_selected_stage();
 
     reset_ac_min_labels();
     reset_ac_max_labels();
