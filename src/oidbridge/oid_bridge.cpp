@@ -146,7 +146,7 @@ class OidBridge
 #if !defined(IS_DEVELOPMENT)
             0;      // A port is chosen automatically.
 #else
-            9588;   // A port is statically set for convenient OID development.
+            59588;   // A port is statically set for convenient OID development.
 #endif
 
         // Initialize server

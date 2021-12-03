@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     QCommandLineParser parser;
     parser.addOptions({
         {"h", "hostname", "hostname", "127.0.0.1"},
-        {"p", "port", "port", "9588"},
+        {"p", "port", "port", "59588"},
         {"l", "logger", "logger", ""},
     });
     parser.parse(QCoreApplication::arguments());
