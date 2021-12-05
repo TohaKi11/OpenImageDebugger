@@ -309,8 +309,11 @@ class OidBridge
 
     ~OidBridge()
     {
+        Logger::instance()->info("Bridge is being destroyed");
+
 #if !defined(IS_DEVELOPMENT)
         ui_proc_.kill();
+        Logger::instance()->info("UI app has been killed");
 #endif
     }
 

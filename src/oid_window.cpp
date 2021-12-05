@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
         const std::string logger_file_name_str = parser.value("l").toStdString();
         if (!logger_file_name_str.empty())
             Logger::set_file_name(logger_file_name_str);
-        Logger::set_logger_name("UI app");
+        Logger::set_logger_name("UI_app");
     }
 
     ConnectionSettings host_settings;

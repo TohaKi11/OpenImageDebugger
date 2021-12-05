@@ -301,6 +301,8 @@ void MainWindow::decode_plot_buffer_contents()
     persist_settings_deferred();
 
     request_render_update_ = true;
+
+    Logger::instance()->info("Finished plotting symbol data: {}", variable_name_str);
 }
 
 
@@ -334,6 +336,8 @@ void MainWindow::decode_incoming_messages()
 {
     // Close application if server has disconnected
     if (socket_.state() == QTcpSocket::UnconnectedState) {
+
+        Logger::instance()->info("Quitting due to the disconnection from bridge server");
         QApplication::quit();
     }
 
